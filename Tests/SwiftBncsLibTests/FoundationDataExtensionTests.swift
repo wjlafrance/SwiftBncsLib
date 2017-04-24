@@ -16,7 +16,6 @@ class FoundationDataExtensionTests: XCTestCase {
         let testData = Foundation.Data(bytes: inputBytes)
 
         let test = testData.hexDescription
-        print(test)
 
         // Printable characters
         XCTAssertEqual(test.components(separatedBy: "\n")[2],
