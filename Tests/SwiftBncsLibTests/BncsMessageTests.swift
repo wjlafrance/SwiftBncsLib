@@ -52,4 +52,10 @@ class BncsMessageTests: XCTestCase {
         XCTAssertEqual(BncsMessageIdentifier.Ping, testMessage.identifier)
     }
 
+    func testDebugDescription() {
+        let testMessage = BncsMessage.examplePingMessage
+
+        XCTAssertTrue(testMessage.debugDescription.hasPrefix("BncsMessage (Ping):\n0000: FF 25"))
+    }
+
 }

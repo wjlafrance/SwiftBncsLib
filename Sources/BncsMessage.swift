@@ -6,7 +6,7 @@ enum BncsMessageError: Error {
     case IncorrectMessageLength
 }
 
-struct BncsMessage {
+struct BncsMessage: CustomDebugStringConvertible {
     var data: Foundation.Data
     var readIndex: Foundation.Data.Index
 
@@ -41,5 +41,9 @@ struct BncsMessage {
 
         assertionFailure("Attempted to find BncsMessageIdentifier for unknown ID: \(rawIdentifier)")
         return BncsMessageIdentifier.Unknown
+    }
+
+    var debugDescription: String {
+        return "BncsMessage (\(identifier)):\n\(data.hexDescription)"
     }
 }
