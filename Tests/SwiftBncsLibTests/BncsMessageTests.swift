@@ -20,8 +20,6 @@ class BncsMessageTests: XCTestCase {
         }
 
         XCTAssertEqual(testMessage.data, BncsMessage.examplePingMessageData)
-
-        XCTAssertEqual(testMessage.readIndex, 4, "read index should be past header")
     }
 
     func testInitializationThrowsForMalformedMessages() {

@@ -8,7 +8,6 @@ enum BncsMessageError: Error {
 
 struct BncsMessage: CustomDebugStringConvertible, Equatable {
     var data: Foundation.Data
-    var readIndex: Foundation.Data.Index
 
     init(data: Foundation.Data) throws {
 
@@ -29,7 +28,6 @@ struct BncsMessage: CustomDebugStringConvertible, Equatable {
         }
 
         self.data = data
-        self.readIndex = 4
     }
 
     var identifier: BncsMessageIdentifier {
