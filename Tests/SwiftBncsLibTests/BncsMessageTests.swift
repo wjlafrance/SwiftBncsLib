@@ -2,8 +2,16 @@ import XCTest
 @testable import SwiftBncsLib
 
 extension BncsMessage {
+    internal static var exampleRegistryMessageData: Foundation.Data {
+        return Foundation.Data(bytes: [0xFF, 0x18, 14, 0x00, 0xDE, 0xAD, 0xBE, 0xEF, 0x01, 0x00, 0x00, 0x80, 0x00, 0x00])
+    }
+
     internal static var examplePingMessageData: Foundation.Data {
         return Foundation.Data(bytes: [0xFF, 0x25, 0x08, 0x00, 0xDE, 0xAD, 0xBE, 0xEF])
+    }
+
+    internal static var exampleRegistryMessage: BncsMessage {
+        return try! BncsMessage(data: exampleRegistryMessageData)
     }
 
     internal static var examplePingMessage: BncsMessage {

@@ -1,4 +1,6 @@
 enum BncsMessageIdentifier: UInt8 {
+    case Null      = 0x00
+    case Registry  = 0x18
     case Ping      = 0x25
     case AuthInfo  = 0x50
     case AuthCheck = 0x51
