@@ -31,4 +31,15 @@ struct BncsMessage {
         self.data = data
         self.readIndex = 4
     }
+
+    var identifier: BncsMessageIdentifier {
+        let rawIdentifier = data.arrayOfBytes()[1]
+
+        if let x = BncsMessageIdentifier(rawValue: rawIdentifier) {
+            return x
+        }
+
+        assertionFailure("Attempted to find BncsMessageIdentifier for unknown ID: \(rawIdentifier)")
+        return BncsMessageIdentifier.Unknown
+    }
 }

@@ -1,17 +1,25 @@
 import XCTest
 @testable import SwiftBncsLib
 
+extension BncsMessage {
+    internal static var examplePingMessageData: Foundation.Data {
+        return Foundation.Data(bytes: [0xFF, 0x25, 0x08, 0x00, 0xDE, 0xAD, 0xBE, 0xEF])
+    }
+
+    internal static var examplePingMessage: BncsMessage {
+        return try! BncsMessage(data: examplePingMessageData)
+    }
+}
+
 class BncsMessageTests: XCTestCase {
 
-    let examplePingMessageData = Foundation.Data(bytes: [0xFF, 0x25, 0x08, 0x00, 0xDE, 0xAD, 0xBE, 0xEF])
-
     func testCanBeInitializedWithValidData() {
-        guard let testMessage = try? BncsMessage(data: examplePingMessageData) else {
+        guard let testMessage = try? BncsMessage(data: BncsMessage.examplePingMessageData) else {
             XCTFail()
             return
         }
 
-        XCTAssertEqual(testMessage.data, examplePingMessageData)
+        XCTAssertEqual(testMessage.data, BncsMessage.examplePingMessageData)
 
         XCTAssertEqual(testMessage.readIndex, 4, "read index should be past header")
     }
@@ -36,6 +44,12 @@ class BncsMessageTests: XCTestCase {
             }
             XCTAssertTrue(hasThrown)
         }
+    }
+
+    func testIdentifier() {
+        let testMessage = BncsMessage.examplePingMessage
+
+        XCTAssertEqual(BncsMessageIdentifier.Ping, testMessage.identifier)
     }
 
 }
