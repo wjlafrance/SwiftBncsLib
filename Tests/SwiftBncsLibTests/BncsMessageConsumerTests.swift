@@ -20,24 +20,41 @@ class BncsMessageConsumerTests: XCTestCase {
     }
 
     func testReadUInt8() {
-        let testU8Consumer = generateTestConsumer()
-        XCTAssertEqual(0xDE, testU8Consumer.readUInt8())
-        XCTAssertEqual(5, testU8Consumer.readIndex)
+        let testConsumer = generateTestConsumer()
+        XCTAssertEqual(0xDE, testConsumer.readUInt8())
+        XCTAssertEqual(5, testConsumer.readIndex)
     }
     func testReadUInt16() {
-        let testU16Consumer = generateTestConsumer()
-        XCTAssertEqual(0xADDE, testU16Consumer.readUInt16())
-        XCTAssertEqual(4 + (16 / 8), testU16Consumer.readIndex)
+        let testConsumer = generateTestConsumer()
+        XCTAssertEqual(0xADDE, testConsumer.readUInt16())
+        XCTAssertEqual(4 + (16 / 8), testConsumer.readIndex)
     }
     func testReadUInt32() {
-        let testU32Consumer = generateTestConsumer()
-        XCTAssertEqual(0xEFBEADDE, testU32Consumer.readUInt32())
-        XCTAssertEqual(4 + (32 / 8), testU32Consumer.readIndex)
+        let testConsumer = generateTestConsumer()
+        XCTAssertEqual(0xEFBEADDE, testConsumer.readUInt32())
+        XCTAssertEqual(4 + (32 / 8), testConsumer.readIndex)
     }
     func testReadUInt64() {
-        let testU64Consumer = generateTestConsumer()
-        XCTAssertEqual(0x80000001EFBEADDE, testU64Consumer.readUInt64())
-        XCTAssertEqual(4 + (64 / 8), testU64Consumer.readIndex)
+        let testConsumer = generateTestConsumer()
+        XCTAssertEqual(0x80000001EFBEADDE, testConsumer.readUInt64())
+        XCTAssertEqual(4 + (64 / 8), testConsumer.readIndex)
+    }
+
+    func testReadNullTerminatedString() {
+        let testConsumer = generateTestConsumer()
+        testConsumer.readIndex = 12 // skip to first string index
+        print("\(testConsumer)")
+
+        XCTAssertEqual("str1", testConsumer.readNullTerminatedString())
+        XCTAssertEqual(17, testConsumer.readIndex)
+        XCTAssertEqual("str2", testConsumer.readNullTerminatedString())
+        XCTAssertEqual(22, testConsumer.readIndex)
+    }
+
+    func testDebugDescription() {
+        let testConsumer = generateTestConsumer()
+
+        XCTAssertEqual(testConsumer.debugDescription, "BncsMessageConsumer<idx: 4, msg: \(testConsumer.message.debugDescription)")
     }
 
 }

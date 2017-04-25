@@ -1,6 +1,6 @@
 import Foundation
 
-class BncsMessageConsumer {
+class BncsMessageConsumer: CustomDebugStringConvertible {
 
     var message: BncsMessage
     var readIndex: Foundation.Data.Index
@@ -23,6 +23,26 @@ class BncsMessageConsumer {
     }
     func readUInt64() -> UInt64 {
         return UInt64(readUInt32()) | UInt64(readUInt32()) << 32
+    }
+
+    func readNullTerminatedString() -> String {
+        var xs: [UInt8] = []
+        var x: UInt8 = readUInt8()
+        while x != 0 {
+            xs.append(x)
+            x = readUInt8()
+        }
+
+        guard let result = String(data: Foundation.Data(bytes: xs), encoding: .ascii) else {
+            preconditionFailure("failed to decode ASCII string: \(xs)")
+        }
+        return result
+    }
+
+    //MARK: CustomDebugStringConvertible
+
+    var debugDescription: String {
+        return "BncsMessageConsumer<idx: \(readIndex), msg: \(message)"
     }
 
 }
