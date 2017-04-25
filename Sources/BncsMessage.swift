@@ -6,7 +6,7 @@ enum BncsMessageError: Error {
     case IncorrectMessageLength
 }
 
-struct BncsMessage: CustomDebugStringConvertible {
+struct BncsMessage: CustomDebugStringConvertible, Equatable {
     var data: Foundation.Data
     var readIndex: Foundation.Data.Index
 
@@ -43,7 +43,15 @@ struct BncsMessage: CustomDebugStringConvertible {
         return BncsMessageIdentifier.Unknown
     }
 
+    //MARK: CustomDebugStringConvertible
+
     var debugDescription: String {
         return "BncsMessage (\(identifier)):\n\(data.hexDescription)"
+    }
+
+    //MARK: Equatable
+
+    public static func ==(lhs: BncsMessage, rhs: BncsMessage) -> Bool {
+        return lhs.data == rhs.data
     }
 }
