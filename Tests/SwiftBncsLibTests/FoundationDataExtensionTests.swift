@@ -11,6 +11,14 @@ class FoundationDataExtensionTests: XCTestCase {
         XCTAssertEqual(testData.arrayOfBytes(), inputBytes)
     }
 
+    func testSubdataFromIndex() {
+        let inputBytes: [UInt8] = [1, 2, 3, 127, 255, 0]
+
+        let testData = Foundation.Data(bytes: inputBytes)
+
+        XCTAssertEqual(testData.subdataFromIndex(3).arrayOfBytes(), [127, 255, 0])
+    }
+
     func testHexDescription() {
         let inputBytes = [UInt8](1...255)
         let testData = Foundation.Data(bytes: inputBytes)

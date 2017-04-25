@@ -9,6 +9,11 @@ extension Foundation.Data {
         return bytesArray
     }
 
+    func subdataFromIndex(_ index: Data.Index) -> Data {
+        let range = Range<Data.Index>(uncheckedBounds: (lower: index, upper: count))
+        return subdata(in: range)
+    }
+
     public var hexDescription: String {
         let contents = arrayOfBytes()
         let lineLength = 16
