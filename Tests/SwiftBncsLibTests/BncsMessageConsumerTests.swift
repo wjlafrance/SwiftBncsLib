@@ -43,7 +43,6 @@ class BncsMessageConsumerTests: XCTestCase {
     func testReadNullTerminatedString() {
         let testConsumer = generateTestConsumer()
         testConsumer.readIndex = 12 // skip to first string index
-        print("\(testConsumer)")
 
         XCTAssertEqual("str1", testConsumer.readNullTerminatedString())
         XCTAssertEqual(17, testConsumer.readIndex)
