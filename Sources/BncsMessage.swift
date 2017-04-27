@@ -23,8 +23,8 @@ struct BncsMessage: Message, CustomDebugStringConvertible {
 
         // Check length matches
         guard data.count == Int(data.arrayOfBytes()[2]) |
-                            Int(data.arrayOfBytes()[3]) << 8 else {
-                throw BncsMessageError.IncorrectMessageLength
+                           (Int(data.arrayOfBytes()[3]) << 8) else {
+            throw BncsMessageError.IncorrectMessageLength
         }
 
         self.data = data
