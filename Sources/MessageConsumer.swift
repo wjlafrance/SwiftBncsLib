@@ -7,6 +7,18 @@ protocol MessageConsumer {
     var message: MessageType { get }
 }
 
+struct RawMessageConsumer: MessageConsumer {
+
+    var readIndex: Foundation.Data.Index
+    var message: Foundation.Data
+
+    init(message: Foundation.Data) {
+        self.message = message
+        self.readIndex = 0
+    }
+
+}
+
 extension MessageConsumer {
 
     mutating func readUInt8() -> UInt8 {

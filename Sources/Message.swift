@@ -6,6 +6,14 @@ protocol Message: Equatable {
 
 }
 
+extension Foundation.Data: Message {
+
+    var data: Foundation.Data {
+        return self
+    }
+
+}
+
 extension Message {
 
     //MARK: Equatable

@@ -1,3 +1,5 @@
+import Foundation
+
 class CdKeyDecode {
 
     static let KeyTable: [UInt8] = [
@@ -63,10 +65,21 @@ class CdKeyDecode {
         var table = [UInt8](repeating: 0, count: CdKeyDecode.W3_BUFLEN)
         var values: [UInt32] = [0, 0, 0, 0]
 
-        tableLookup(key: cdkey.uppercased(), buf: &table)
+        tableLookup(key: cdkey.uppercased().utf8CString.map { Int($0) }, buf: &table)
 
+        // Multiplication rounds
         for i in (0..<CdKeyDecode.W3_BUFLEN).reversed() {
-            Mult(bufB: &values, decodedByte: table[i])
+            var input = table[i]
+
+            for position in (0..<4).reversed() {
+                let x = Int64(values[position]) * 5
+
+                // Truncate to UInt32 and store
+                values[position] = UInt32(input) + UInt32(truncatingBitPattern: x)
+
+                // Keep the carry bits only
+                input = UInt8(truncatingBitPattern: x >> 32)
+            }
         }
 
         decodeKeyTablePass1(keyTable: &values)
@@ -90,7 +103,7 @@ class CdKeyDecode {
 
     }
 
-    func tableLookup(key: String, buf: inout [UInt8]) {
+    func tableLookup(key: [Int], buf: inout [UInt8]) {
         var a = 0
         var b = 0x21
 
@@ -98,105 +111,71 @@ class CdKeyDecode {
             a = (b + 0x07B5) % CdKeyDecode.W3_BUFLEN
             b = (a + 0x07B5) % CdKeyDecode.W3_BUFLEN
 
-            let decode = CdKeyDecode.KeyTable[Int(key.utf8CString[i])]
+            let decode = CdKeyDecode.KeyTable[key[i]]
             buf[a] = decode / 5
             buf[b] = decode % 5
         }
     }
 
-    func Mult(bufB: inout [UInt32], decodedByte: UInt8) {
-
-        var bufA = bufB
-        var copy_decodedByte = decodedByte
-
-        for position in (0..<4).reversed() {
-            let edxeax = Int64(bufA[position]) * 5
-
-            bufB[position] = UInt32(copy_decodedByte) + UInt32(truncatingBitPattern: edxeax)
-            copy_decodedByte = UInt8(truncatingBitPattern: edxeax >> 32)
-        }
-    }
-
     func decodeKeyTablePass1(keyTable: inout [UInt32]) {
-        var ebx = 0 as UInt32
-        var ecx = 0 as UInt32
-        var esi = 0 as UInt32
-        var ebp = 0 as UInt32
-        var var_C = 0 as UInt32
-        var var_4 = 0 as UInt32
-        var var_8 = 29 as UInt32 // 29 * 16 = 464.. loop counter of some sort
 
         for i: UInt32 in stride(from: 464, through: 0, by: -16) {
+            let var_8 = i / 16
+            let esi = (var_8 & 7) << 2
+            let outputIndex = 3 - Int(var_8) >> 3
+            var ebx = (keyTable[outputIndex] & (0x0F << esi)) >> esi
 
-            esi = (var_8 & 7) << 2
-            var_4 = var_8 >> 3
-            var_C = (keyTable[3 - Int(var_4)] & (0x0F << esi)) >> esi
-
+            // Skip on first round
             if (i < 464) {
                 for j in stride(from: 29, to: var_8, by: -1) {
-                ecx = (j & 7) << 2
-                ebp = (keyTable[0x03 - (Int(j) >> 3)] & (0x0F << ecx)) >> ecx
-                var_C = UInt32(CdKeyDecode.TranslateTable[Int(ebp ^ UInt32(CdKeyDecode.TranslateTable[Int(var_C + i)]) + i)])
+                    let ecx = (j & 7) << 2
+                    let ebp = (keyTable[0x03 - (Int(j) >> 3)] & (0x0F << ecx)) >> ecx
+                    ebx = UInt32(CdKeyDecode.TranslateTable[Int(ebx + i)])
+                    ebx = UInt32(CdKeyDecode.TranslateTable[Int(ebp ^ ebx + i)])
                 }
             }
 
-            if var_8 > 0 {
-                var_8 -= 1 // decrement loop counter
-                for j: UInt32 in stride(from: var_8, through: 0, by: -1) {
-                    ecx = (j & 7) << 2;
-                    ebp = keyTable[Int(0x3 - (j >> 3))]
+            // Skip on last round
+            if (i > 0) {
+                for j: UInt32 in stride(from: var_8-1, through: 0, by: -1) {
+                    let ecx = (j & 7) << 2;
+                    var ebp = keyTable[Int(0x3 - (j >> 3))]
                     ebp &= (0xF << ecx)
                     ebp = ebp >> ecx
-                    var_C = UInt32(CdKeyDecode.TranslateTable[Int(ebp ^ UInt32(CdKeyDecode.TranslateTable[Int(var_C + i)]) + i)])
+                    ebx = UInt32(CdKeyDecode.TranslateTable[Int(ebx + i)])
+                    ebx = UInt32(CdKeyDecode.TranslateTable[Int(ebp ^ ebx + i)])
                 }
             }
 
-            let index = 3 - Int(var_4)
-            ebx = (UInt32(CdKeyDecode.TranslateTable[Int(var_C + i)]) & 0x0F) << esi;
+            ebx = (UInt32(CdKeyDecode.TranslateTable[Int(ebx + i)]) & 0x0F) << esi;
 
-            print(esi)
-            keyTable[index] = ebx | ~(0x0F << esi) & keyTable[index]
-            print(keyTable[index])
+            keyTable[outputIndex] = ebx | ~(0x0F << esi) & keyTable[outputIndex]
         }
     }
 
     func decodeKeyTablePass2(keyTable: inout [UInt32]) {
-        var ecx = 0 as UInt32
-        var esi = 0 as UInt32
-        var ebp = 0 as UInt32
-        var edx = 0 as UInt32
-        var eax = 0 as UInt32
 
-        var copy: [UInt8] = [
-            keyTable[0]       & 0xFF, keyTable[0] >>  8 & 0xFF,
-            keyTable[0] >> 16 & 0xFF, keyTable[0] >> 24 & 0xFF,
-            keyTable[1]       & 0xFF, keyTable[1] >>  8 & 0xFF,
-            keyTable[1] >> 16 & 0xFF, keyTable[1] >> 24 & 0xFF,
-            keyTable[2]       & 0xFF, keyTable[2] >>  8 & 0xFF,
-            keyTable[2] >> 16 & 0xFF, keyTable[2] >> 24 & 0xFF,
-            keyTable[3]       & 0xFF, keyTable[3] >>  8 & 0xFF,
-            keyTable[3] >> 16 & 0xFF, keyTable[3] >> 24 & 0xFF
-        ].map { UInt8($0) }
+        var valueMessageComposer = RawMessageComposer()
+        valueMessageComposer.write(keyTable[0])
+        valueMessageComposer.write(keyTable[1])
+        valueMessageComposer.write(keyTable[2])
+        valueMessageComposer.write(keyTable[3])
+        var valueMessageConsumer = RawMessageConsumer(message: valueMessageComposer.data)
 
         for edi: UInt32 in 0..<120 {
 
-            eax = edi & 0x1F;
-            ecx = esi & 0x1F;
-            edx = 3 - (edi >> 5);
+            let esi = (edi * 0x0B) % 120
+            let eax = edi & 0x1F;
+            let ecx = esi & 0x1F;
+            let edx = 3 - (edi >> 5);
 
             let location = 12 - ((esi >> 5) << 2);
-            ebp = UInt32(copy[Int(location)])
-                | (UInt32(copy[Int(location + 1)]) << 8)
-                | (UInt32(copy[Int(location + 2)]) << 16)
-                | (UInt32(copy[Int(location + 3)]) << 24)
+            valueMessageConsumer.readIndex = Data.Index(location)
 
-            ebp = (ebp & (1 << ecx)) >> ecx
+            let ebp = (valueMessageConsumer.readUInt32() & (1 << ecx)) >> ecx
+
             keyTable[Int(edx)] = ((ebp & 1) << eax) | (~(1 << eax) & keyTable[Int(edx)])
 
-            esi += 0x0B;
-            if (esi >= 120) {
-                esi -= 120;
-            }
         }
     }
 
