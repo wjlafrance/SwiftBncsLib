@@ -4,8 +4,8 @@ public struct BnftpRequestComposer {
 
     private let protocolVersion = 0x100
 
-    var platformIdentifier: BncsPlatformIdentifier = .IntelX86
-    var productIdentifier: BncsProductIdentifier = .StarcraftJapan
+    let platformIdentifier: BncsPlatformIdentifier
+    let productIdentifier: BncsProductIdentifier
 
     private let bannerIdentifier = 0 as UInt32
     private let bannerFileExtension = 0 as UInt32
@@ -13,9 +13,16 @@ public struct BnftpRequestComposer {
     private let startPositionInFile = 0 as UInt32
     private let localFiletime = 0 as UInt64
 
-    var filename: String
+    let filename: String
 
-    func build() -> Foundation.Data {
+    public init(platformIdentifier: BncsPlatformIdentifier = .IntelX86, productIdentifier: BncsProductIdentifier, filename: String) {
+
+        self.platformIdentifier = platformIdentifier
+        self.productIdentifier = productIdentifier
+        self.filename = filename
+    }
+
+    public func build() -> Foundation.Data {
 
         let baseMessageLength = 33
 
