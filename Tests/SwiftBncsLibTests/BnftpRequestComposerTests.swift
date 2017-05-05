@@ -15,9 +15,6 @@ class BnftpRequestComposerTests: XCTestCase {
     func testGeneratesCorrectData() {
         let composer = BnftpRequestComposer(productIdentifier: .Diablo2, filename: "ver-IX86-2.mpq")
 
-        print(BnftpRequestComposer.exampleRequestData.hexDescription)
-        print(composer.build().hexDescription)
-
         XCTAssertEqual(composer.build(), BnftpRequestComposer.exampleRequestData)
     }
     

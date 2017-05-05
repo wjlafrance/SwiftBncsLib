@@ -7,6 +7,7 @@ protocol MessageConsumer {
     var message: MessageType { get }
 }
 
+
 struct RawMessageConsumer: MessageConsumer {
 
     var readIndex: Foundation.Data.Index
@@ -18,6 +19,7 @@ struct RawMessageConsumer: MessageConsumer {
     }
 
 }
+
 
 extension MessageConsumer {
 
