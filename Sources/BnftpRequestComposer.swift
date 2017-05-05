@@ -1,6 +1,6 @@
 import Foundation
 
-struct BnftpRequestComposer {
+public struct BnftpRequestComposer {
 
     private let protocolVersion = 0x100
 
