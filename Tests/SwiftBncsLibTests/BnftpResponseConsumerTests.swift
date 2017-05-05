@@ -1,0 +1,24 @@
+import XCTest
+@testable import SwiftBncsLib
+
+extension BnftpResponseConsumer {
+
+    internal static var exampleResponseStream: InputStream {
+        return InputStream(data: Foundation.Data(bytes: [
+            0x2c, 0x00, 0x00, 0x00, 0x3a, 0xaa, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x77, 0x41, 0x4f, 0x58, 0xbc, 0xd2, 0x01, 0x74, 0x6f, 0x73, 0x2d, 0x75, 0x6e, 0x69, 0x63, 0x6f, 0x64, 0x65, 0x5f, 0x55, 0x53, 0x41, 0x2e, 0x74, 0x78, 0x74, 0x00]))
+    }
+
+}
+
+class BnftpResponseConsumerTests: XCTestCase {
+
+    func testParsesDataCorrectly() {
+        let inputStream = BnftpResponseConsumer.exampleResponseStream
+        inputStream.open()
+        let consumer = try! BnftpResponseConsumer(inputStream: inputStream)
+
+        XCTAssertEqual(43578, consumer.filesize)
+        XCTAssertEqual("tos-unicode_USA.txt", consumer.filename)
+    }
+    
+}
