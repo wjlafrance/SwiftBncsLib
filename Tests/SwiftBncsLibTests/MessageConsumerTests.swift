@@ -41,4 +41,16 @@ class MessageConsumerTests: XCTestCase {
         XCTAssertEqual(22, testConsumer.readIndex)
     }
 
+    func testReadFixedLengthString() {
+        var testConsumer = generateTestConsumer()
+        testConsumer.readIndex = 12 // skip to first string index
+
+        XCTAssertEqual("str1", testConsumer.readString(length: 4))
+        XCTAssertEqual(0, testConsumer.readUInt8())
+        XCTAssertEqual(17, testConsumer.readIndex)
+        XCTAssertEqual("str2", testConsumer.readString(length: 4))
+        XCTAssertEqual(0, testConsumer.readUInt8())
+        XCTAssertEqual(22, testConsumer.readIndex)
+    }
+
 }

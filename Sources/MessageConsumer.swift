@@ -53,4 +53,16 @@ extension MessageConsumer {
         return result
     }
 
+    mutating func readString(length: Int) -> String {
+        var xs: [UInt8] = []
+        for _ in 0 ..< length {
+            xs.append(readUInt8())
+        }
+
+        guard let result = String(data: Foundation.Data(bytes: xs), encoding: .ascii) else {
+            preconditionFailure("failed to decode ASCII string: \(xs)")
+        }
+        return result
+    }
+
 }

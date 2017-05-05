@@ -1,27 +1,48 @@
 enum BncsMessageIdentifier: UInt8 {
+
     case Null      = 0x00
     case Registry  = 0x18
     case Ping      = 0x25
     case AuthInfo  = 0x50
     case AuthCheck = 0x51
     case Unknown   = 0xFF
+
 }
+
 
 enum BncsProtocolIdentifier: UInt8 {
+
     case ChatService = 0x01
     case FileTransferProtocol = 0x02
+
 }
 
+
 enum BncsPlatformIdentifier: UInt32 {
+
     case IntelX86       = 0x49583836 // IX86
     case PowerMacintosh = 0x504d4143 // PMAC
     case IntelMacintosh = 0x584d4143 // XMAC
+
+    init?(stringRepresentation: String) {
+        assert(stringRepresentation.characters.count == 4)
+
+        guard let x = BncsPlatformIdentifier(rawValue: FourCC(stringRepresentation: stringRepresentation).rawValue) else {
+            return nil
+        }
+
+        self = x
+    }
 }
 
+
 enum BncsLanguageIdentifier: UInt32 {
+
     case Nil = 0
     case EnglishUnitedStates = 0x656e5553 // enUS
+
 }
+
 
 enum BncsProductIdentifier: UInt32 {
 
@@ -46,6 +67,16 @@ enum BncsProductIdentifier: UInt32 {
         let invalidBncsClients: [BncsProductIdentifier] = [.Telnet, .Starcraft, .StarcraftExpansion, .StarcraftShareware, .StarcraftJapan, .DiabloShareware, .DiabloBeta, .DiabloStressTest, .Diablo2StressTest, .Warcraft3Demo]
 
         return !invalidBncsClients.contains(self)
+    }
+
+    init?(stringRepresentation: String) {
+        assert(stringRepresentation.characters.count == 4)
+
+        guard let x = BncsProductIdentifier(rawValue: FourCC(stringRepresentation: stringRepresentation).rawValue) else {
+            return nil
+        }
+
+        self = x
     }
 
 }
