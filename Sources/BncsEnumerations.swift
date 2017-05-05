@@ -1,4 +1,4 @@
-enum BncsMessageIdentifier: UInt8 {
+public enum BncsMessageIdentifier: UInt8 {
 
     case Null      = 0x00
     case Registry  = 0x18
@@ -10,7 +10,7 @@ enum BncsMessageIdentifier: UInt8 {
 }
 
 
-enum BncsProtocolIdentifier: UInt8 {
+public enum BncsProtocolIdentifier: UInt8 {
 
     case ChatService = 0x01
     case FileTransferProtocol = 0x02
@@ -18,13 +18,13 @@ enum BncsProtocolIdentifier: UInt8 {
 }
 
 
-enum BncsPlatformIdentifier: UInt32 {
+public enum BncsPlatformIdentifier: UInt32 {
 
     case IntelX86       = 0x49583836 // IX86
     case PowerMacintosh = 0x504d4143 // PMAC
     case IntelMacintosh = 0x584d4143 // XMAC
 
-    init?(stringRepresentation: String) {
+    public init?(stringRepresentation: String) {
         assert(stringRepresentation.characters.count == 4)
 
         guard let x = BncsPlatformIdentifier(rawValue: FourCC(stringRepresentation: stringRepresentation).rawValue) else {
@@ -36,7 +36,7 @@ enum BncsPlatformIdentifier: UInt32 {
 }
 
 
-enum BncsLanguageIdentifier: UInt32 {
+public enum BncsLanguageIdentifier: UInt32 {
 
     case Nil = 0
     case EnglishUnitedStates = 0x656e5553 // enUS
@@ -44,7 +44,7 @@ enum BncsLanguageIdentifier: UInt32 {
 }
 
 
-enum BncsProductIdentifier: UInt32 {
+public enum BncsProductIdentifier: UInt32 {
 
     case Telnet             = 0x43484154 // CHAT
     case StarcraftShareware = 0x53534852 // SSHR
@@ -69,7 +69,7 @@ enum BncsProductIdentifier: UInt32 {
         return !invalidBncsClients.contains(self)
     }
 
-    init?(stringRepresentation: String) {
+    public init?(stringRepresentation: String) {
         assert(stringRepresentation.characters.count == 4)
 
         guard let x = BncsProductIdentifier(rawValue: FourCC(stringRepresentation: stringRepresentation).rawValue) else {
