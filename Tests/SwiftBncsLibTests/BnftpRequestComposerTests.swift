@@ -1,0 +1,24 @@
+import XCTest
+@testable import SwiftBncsLib
+
+extension BnftpRequestComposer {
+
+    internal static var exampleRequestData: Foundation.Data {
+        return Foundation.Data(bytes: [
+            0x2f, 0x00, 0x00, 0x01, 0x36, 0x38, 0x58, 0x49, 0x56, 0x44, 0x32, 0x44, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x76, 0x65, 0x72, 0x2d, 0x49, 0x58, 0x38, 0x36, 0x2d, 0x32, 0x2e, 0x6d, 0x70, 0x71, 0x00])
+    }
+
+}
+
+class BnftpRequestComposerTests: XCTestCase {
+
+    func testGeneratesCorrectData() {
+        let composer = BnftpRequestComposer(platformIdentifier: .IntelX86, productIdentifier: .Diablo2, filename: "ver-IX86-2.mpq")
+
+        print(BnftpRequestComposer.exampleRequestData.hexDescription)
+        print(composer.build().hexDescription)
+
+        XCTAssertEqual(composer.build(), BnftpRequestComposer.exampleRequestData)
+    }
+    
+}

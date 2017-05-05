@@ -7,6 +7,11 @@ enum BncsMessageIdentifier: UInt8 {
     case Unknown   = 0xFF
 }
 
+enum BncsProtocolIdentifier: UInt8 {
+    case ChatService = 0x01
+    case FileTransferProtocol = 0x02
+}
+
 enum BncsPlatformIdentifier: UInt32 {
     case IntelX86       = 0x49583836 // IX86
     case PowerMacintosh = 0x504d4143 // PMAC
