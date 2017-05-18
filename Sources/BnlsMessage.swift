@@ -1,14 +1,14 @@
 import Foundation
 
-enum BnlsMessageError: Error {
+public enum BnlsMessageError: Error {
     case MalformedHeader
     case IncorrectMessageLength
 }
 
-struct BnlsMessage: Message, CustomDebugStringConvertible {
+public struct BnlsMessage: Message, CustomDebugStringConvertible {
     var data: Foundation.Data
 
-    init(data: Foundation.Data) throws {
+    public init(data: Foundation.Data) throws {
 
         // Check entire header is present
         guard data.count >= 3 else {
@@ -24,7 +24,7 @@ struct BnlsMessage: Message, CustomDebugStringConvertible {
         self.data = data
     }
 
-    var identifier: BnlsMessageIdentifier {
+    public var identifier: BnlsMessageIdentifier {
         let rawIdentifier = data.arrayOfBytes()[2]
 
         if let x = BnlsMessageIdentifier(rawValue: rawIdentifier) {
@@ -37,7 +37,7 @@ struct BnlsMessage: Message, CustomDebugStringConvertible {
 
     //MARK: CustomDebugStringConvertible
 
-    var debugDescription: String {
+    public var debugDescription: String {
         return "BnlsMessage (\(identifier)):\n\(data.hexDescription)"
     }
     

@@ -18,7 +18,7 @@ extension Message {
 
     //MARK: Equatable
 
-    static func ==(lhs: Self, rhs: Self) -> Bool {
+    public static func ==(lhs: Self, rhs: Self) -> Bool {
         return lhs.data == rhs.data
     }
 
