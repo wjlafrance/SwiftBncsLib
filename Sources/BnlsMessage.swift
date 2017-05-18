@@ -6,7 +6,7 @@ public enum BnlsMessageError: Error {
 }
 
 public struct BnlsMessage: Message, CustomDebugStringConvertible {
-    var data: Foundation.Data
+    public let data: Foundation.Data
 
     public init(data: Foundation.Data) throws {
 

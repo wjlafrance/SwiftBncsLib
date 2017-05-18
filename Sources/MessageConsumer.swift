@@ -23,25 +23,25 @@ struct RawMessageConsumer: MessageConsumer {
 
 extension MessageConsumer {
 
-    mutating func readUInt8() -> UInt8 {
+    public mutating func readUInt8() -> UInt8 {
         let x = message.data.arrayOfBytes()[readIndex]
         readIndex += 1
         return x
     }
 
-    mutating func readUInt16() -> UInt16 {
+    public mutating func readUInt16() -> UInt16 {
         return UInt16(readUInt8()) | UInt16(readUInt8()) << 8
     }
 
-    mutating func readUInt32() -> UInt32 {
+    public mutating func readUInt32() -> UInt32 {
         return UInt32(readUInt16()) | UInt32(readUInt16()) << 16
     }
 
-    mutating func readUInt64() -> UInt64 {
+    public mutating func readUInt64() -> UInt64 {
         return UInt64(readUInt32()) | UInt64(readUInt32()) << 32
     }
 
-    mutating func readNullTerminatedString() -> String {
+    public mutating func readNullTerminatedString() -> String {
         var xs: [UInt8] = []
         var x: UInt8 = readUInt8()
         while x != 0 {
@@ -55,7 +55,7 @@ extension MessageConsumer {
         return result
     }
 
-    mutating func readString(length: Int) -> String {
+    public mutating func readString(length: Int) -> String {
         var xs: [UInt8] = []
         for _ in 0 ..< length {
             xs.append(readUInt8())

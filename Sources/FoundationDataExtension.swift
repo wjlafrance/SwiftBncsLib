@@ -2,7 +2,7 @@ import Foundation
 
 extension Foundation.Data {
 
-    func arrayOfBytes() -> [UInt8] {
+    public func arrayOfBytes() -> [UInt8] {
         let count = self.count / MemoryLayout<UInt8>.size
         var bytesArray = [UInt8](repeating: 0, count: count)
         copyBytes(to: &bytesArray, count: count * MemoryLayout<UInt8>.stride)

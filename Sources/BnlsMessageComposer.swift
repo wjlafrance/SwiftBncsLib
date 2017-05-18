@@ -4,6 +4,8 @@ public struct BnlsMessageComposer: MessageComposer {
 
     var data: Foundation.Data = Foundation.Data()
 
+    public init() {}
+
     public func build(messageIdentifier: BnlsMessageIdentifier) -> BnlsMessage {
 
         var fullMessageComposer = RawMessageComposer()
