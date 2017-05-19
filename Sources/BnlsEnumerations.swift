@@ -15,4 +15,7 @@ public enum BnlsProductIdentifier: UInt32 {
     case StarcraftJapan     = 6
     case Warcraft3          = 7
     case Warcraft3Expansion = 8
+    case Diablo             = 9
+    case DiabloShareware    = 10
+    case StarcraftShareware = 11
 }
