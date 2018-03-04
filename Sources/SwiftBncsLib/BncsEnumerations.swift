@@ -25,7 +25,7 @@ public enum BncsPlatformIdentifier: UInt32 {
     case IntelMacintosh = 0x584d4143 // XMAC
 
     public init?(stringRepresentation: String) {
-        assert(stringRepresentation.characters.count == 4)
+        assert(stringRepresentation.count == 4)
 
         guard let x = BncsPlatformIdentifier(rawValue: FourCC(stringRepresentation: stringRepresentation).rawValue) else {
             return nil
@@ -70,7 +70,7 @@ public enum BncsProductIdentifier: UInt32 {
     }
 
     public init?(stringRepresentation: String) {
-        assert(stringRepresentation.characters.count == 4)
+        assert(stringRepresentation.count == 4)
 
         guard let x = BncsProductIdentifier(rawValue: FourCC(stringRepresentation: stringRepresentation).rawValue) else {
             return nil

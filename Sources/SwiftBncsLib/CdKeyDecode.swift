@@ -75,10 +75,10 @@ class CdKeyDecode {
                 let x = Int64(values[position]) * 5
 
                 // Truncate to UInt32 and store
-                values[position] = UInt32(input) + UInt32(truncatingBitPattern: x)
+                values[position] = UInt32(input) + UInt32(truncatingIfNeeded: x)
 
                 // Keep the carry bits only
-                input = UInt8(truncatingBitPattern: x >> 32)
+                input = UInt8(truncatingIfNeeded: x >> 32)
             }
         }
 
@@ -88,18 +88,11 @@ class CdKeyDecode {
         productValue = values[0] >> 0x0a
         value1 = ((values[0] & 0x03FF) << 0x10) | (values[1] >> 0x10)
 
-        value2 = [
-            values[1] & 0xFF,
-            (values[1] >> 8) & 0xFF,
-            (values[2]) & 0xFF,
-            (values[2] >> 8) & 0xFF,
-            (values[2] >> 16) & 0xFF,
-            (values[2] >> 24) & 0xFF,
-            (values[3]) & 0xFF,
-            (values[3] >> 8) & 0xFF,
-            (values[3] >> 16) & 0xFF,
-            (values[3] >> 24) & 0xFF
-        ].map { UInt8($0) }
+        value2 = [UInt8]()
+        value2.append(UInt8(values[1]        & 0xFF))
+        value2.append(UInt8((values[1] >> 8) & 0xFF))
+        value2.append(contentsOf: IntUtil.from32to8(values[2]))
+        value2.append(contentsOf: IntUtil.from32to8(values[3]))
 
     }
 
@@ -174,7 +167,9 @@ class CdKeyDecode {
 
             let ebp = (valueMessageConsumer.readUInt32() & (1 << ecx)) >> ecx
 
-            keyTable[Int(edx)] = ((ebp & 1) << eax) | (~(1 << eax) & keyTable[Int(edx)])
+            let lhs = ((ebp & 1) << eax)
+            let rhs = (~(1 << eax) & keyTable[Int(edx)])
+            keyTable[Int(edx)] = lhs | rhs
 
         }
     }

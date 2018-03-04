@@ -32,7 +32,7 @@ extension Foundation.Data {
             let byte2 = (offset + 1 < input.count) ? input[offset + 1] : 0
             let byte3 = (offset + 2 < input.count) ? input[offset + 2] : 0
             let byte4 = (offset + 3 < input.count) ? input[offset + 3] : 0
-            data[i] = UInt32(byte1) | UInt32(byte2) << 8 | UInt32(byte3) << 16 | UInt32(byte4) << 24
+            data[i] = IntUtil.from8to32([byte1, byte2, byte3, byte4])
         }
 
         for i in 16..<80 {

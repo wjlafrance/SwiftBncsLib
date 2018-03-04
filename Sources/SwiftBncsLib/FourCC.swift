@@ -9,8 +9,8 @@ struct FourCC {
     }
 
     init(stringRepresentation: String) {
-        precondition(stringRepresentation.characters.count >= 4, "not enough bytes for a 32-bit integer")
-        assert(stringRepresentation.characters.count == 4, "incorrect number of bytes for a 32-bit integer")
+        precondition(stringRepresentation.count >= 4, "not enough bytes for a 32-bit integer")
+        assert(stringRepresentation.count == 4, "incorrect number of bytes for a 32-bit integer")
 
         var composer = RawMessageComposer()
         composer.write(stringRepresentation)
