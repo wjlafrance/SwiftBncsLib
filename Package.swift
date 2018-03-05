@@ -7,6 +7,9 @@ let package = Package(
     name: "SwiftBncsLib",
     products: [
         // Products define the executables and libraries produced by a package, and make them visible to other packages.
+        .executable(
+            name: "SwiftBncs",
+            targets: ["SwiftBncs"]),
         .library(
             name: "SwiftBncsLib",
             targets: ["SwiftBncsLib"]),
@@ -22,6 +25,9 @@ let package = Package(
         .target(
             name: "SwiftBncsLib",
             dependencies: []),
+        .target(
+            name: "SwiftBncs",
+            dependencies: ["SwiftBncsLib"]),
         .testTarget(
             name: "SwiftBncsLibTests",
             dependencies: ["SwiftBncsLib"]),
