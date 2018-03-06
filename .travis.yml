@@ -1,5 +1,5 @@
 language: objective-c
-osx_image: xcode8.3
+osx_image: xcode9.2
 env:
   - TOOLCHAINS=swift
 script:
@@ -7,8 +7,8 @@ script:
   - swift build
   - swift test
 before_install:
-  - TOOLCHAIN_BRANCH=swift-3.1-branch
-  - TOOLCHAIN_VERSION=swift-3.1-DEVELOPMENT-SNAPSHOT-2017-03-27-a
+  - TOOLCHAIN_BRANCH=swift-4.0.3-release
+  - TOOLCHAIN_VERSION=swift-4.0.3-RELEASE
   - curl -O https://swift.org/builds/${TOOLCHAIN_BRANCH}/xcode/${TOOLCHAIN_VERSION}/${TOOLCHAIN_VERSION}-osx.pkg
   - sudo installer -pkg ${TOOLCHAIN_VERSION}-osx.pkg -target /
 
