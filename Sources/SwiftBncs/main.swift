@@ -12,32 +12,62 @@ extension SwiftBncsLib.Message {
 
 }
 
-private final class ChatHandler: ChannelInboundHandler {
+private final class BncsMessageCodec: ByteToMessageDecoder {
     public typealias InboundIn = ByteBuffer
+    public typealias InboundOut = BncsMessage
+
+    public var cumulationBuffer: ByteBuffer?
+
+    public func decode(ctx: ChannelHandlerContext, buffer: inout ByteBuffer) throws -> DecodingState {
+        guard buffer.readableBytes >= 4 else {
+            return .needMoreData
+        }
+
+        let length = buffer.withUnsafeReadableBytes { urbp in
+            return Int(urbp[2]) | Int(urbp[3] >> 8)
+        }
+
+        guard buffer.readableBytes >= length else {
+            return .needMoreData
+        }
+
+        do {
+            let message = try BncsMessage(data: Data(bytes: buffer.readBytes(length: length)!))
+            ctx.fireChannelRead(self.wrapInboundOut(message))
+        } catch (let error) {
+            print("Error in BncsMessageCodec: \(error)")
+        }
+
+        return .continue
+    }
+}
+
+private final class ChatHandler: ChannelInboundHandler {
+    public typealias InboundIn = BncsMessage
     public typealias OutboundOut = ByteBuffer
 
     var incomingBuffer = [UInt8]()
 
     public func channelRead(ctx: ChannelHandlerContext, data: NIOAny) {
-        var buffer = self.unwrapInboundIn(data)
+        let message = self.unwrapInboundIn(data)
+        var consumer = BncsMessageConsumer(message: message)
 
-        let bytesAvailable = buffer.readableBytes
-        guard let bytesRead = buffer.readBytes(length: bytesAvailable) else {
-            print("error: couldn't readBytes?")
-            return
-        }
+        switch consumer.message.identifier {
+            case .Ping:
+                print("[BNCS] Ping!")
 
-        incomingBuffer.append(contentsOf: bytesRead)
-//        print(incomingBuffer)
+            case .AuthInfo:
+                print("[BNCS] Received auth challenge.")
+                let loginType   = consumer.readUInt32()
+                let serverToken = consumer.readUInt32()
+                let udpValue    = consumer.readUInt32()
+                let mpqFiletime = consumer.readUInt64()
+                let mpqFilename = consumer.readNullTerminatedString()
+                let valueString = consumer.readNullTerminatedString()
+                print("[BNCS] Auth challenge received. Login type \(loginType), MPQ \(mpqFilename) (\(mpqFiletime)), challenge: \(valueString).")
 
-
-        // DO THE PARSE!
-
-        let (messageConsumers, remainingBytes) = BncsMessageConsumer.fromUInt8Array(incomingBuffer)
-        incomingBuffer = remainingBytes
-
-        for messageConsumer in messageConsumers {
-            print(messageConsumer)
+            default:
+                print("No parser for this packet!\n\(consumer)")
         }
     }
 
@@ -55,14 +85,16 @@ let bootstrap = ClientBootstrap(group: group)
     // Enable SO_REUSEADDR.
     .channelOption(ChannelOptions.socket(SocketOptionLevel(SOL_SOCKET), SO_REUSEADDR), value: 1)
     .channelInitializer { channel in
-        channel.pipeline.add(handler: ChatHandler())
+        channel.pipeline.add(handler: BncsMessageCodec()).then { v in
+            channel.pipeline.add(handler: ChatHandler())
+        }
     }
 defer {
     try! group.syncShutdownGracefully()
 }
 
 print("[BNCS] Connecting...")
-let channel = try bootstrap.connect(host: "uswest.battle.net", port: 6112).wait()
+let channel = try bootstrap.connect(host: "useast.battle.net", port: 6112).wait()
 
 print("[BNCS] Connected to \(channel.remoteAddress!).")
 
@@ -73,7 +105,7 @@ try! channel.writeAndFlush(protocolByteBuffer).wait()
 var composer = BncsMessageComposer()
 composer.write(0 as UInt32)
 composer.write(BncsPlatformIdentifier.IntelX86.rawValue)
-composer.write(BncsProductIdentifier.StarcraftExpansion.rawValue)
+composer.write(BncsProductIdentifier.Diablo2.rawValue)
 composer.write(0xD5 as UInt32)
 composer.write(BncsLanguageIdentifier.EnglishUnitedStates.rawValue)
 composer.write(0 as UInt32)
@@ -100,7 +132,7 @@ try! authInfoMessage.writeToChannel(channel).wait()
 // EOF, close connect
 //try! channel.read()
 
-while let line = readLine(strippingNewline: false) {
+while let _ = readLine(strippingNewline: false) {
 //    var buffer = channel.allocator.buffer(capacity: line.utf8.count)
 //    buffer.write(string: line)
 //    try! channel.writeAndFlush(buffer).wait()

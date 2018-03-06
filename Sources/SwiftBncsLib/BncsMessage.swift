@@ -9,7 +9,7 @@ enum BncsMessageError: Error {
 public struct BncsMessage: Message, CustomDebugStringConvertible {
     public var data: Foundation.Data
 
-    init(data: Foundation.Data) throws {
+    public init(data: Foundation.Data) throws {
 
         // Check entire header is present
         guard data.count >= 4 else {
@@ -30,7 +30,7 @@ public struct BncsMessage: Message, CustomDebugStringConvertible {
         self.data = data
     }
 
-    var identifier: BncsMessageIdentifier {
+    public var identifier: BncsMessageIdentifier {
         let rawIdentifier = data.arrayOfBytes()[1]
 
         if let x = BncsMessageIdentifier(rawValue: rawIdentifier) {

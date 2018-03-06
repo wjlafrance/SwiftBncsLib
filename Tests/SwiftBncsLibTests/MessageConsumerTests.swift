@@ -10,7 +10,7 @@ class MessageConsumerTests: XCTestCase {
     func testBytesRemaining() {
         var testConsumer = generateTestConsumer()
         XCTAssertEqual(18, testConsumer.bytesRemaining)
-        testConsumer.readUInt8Array(5)
+        let _ = testConsumer.readUInt8Array(5)
         XCTAssertEqual(13, testConsumer.bytesRemaining)
     }
 
