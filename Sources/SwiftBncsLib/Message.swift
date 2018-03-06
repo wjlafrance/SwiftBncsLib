@@ -1,6 +1,6 @@
 import Foundation
 
-protocol Message: Equatable {
+public protocol Message: Equatable {
 
     var data: Foundation.Data { get }
 
@@ -8,7 +8,7 @@ protocol Message: Equatable {
 
 extension Foundation.Data: Message {
 
-    var data: Foundation.Data {
+    public var data: Foundation.Data {
         return self
     }
 

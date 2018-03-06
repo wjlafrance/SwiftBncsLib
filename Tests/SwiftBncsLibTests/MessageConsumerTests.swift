@@ -7,10 +7,24 @@ class MessageConsumerTests: XCTestCase {
         return BncsMessageConsumer(message: BncsMessage.exampleRegistryMessage)
     }
 
+    func testBytesRemaining() {
+        var testConsumer = generateTestConsumer()
+        XCTAssertEqual(18, testConsumer.bytesRemaining)
+        testConsumer.readUInt8Array(5)
+        XCTAssertEqual(13, testConsumer.bytesRemaining)
+    }
+
     func testReadUInt8() {
         var testConsumer = generateTestConsumer()
         XCTAssertEqual(0xDE, testConsumer.readUInt8())
         XCTAssertEqual(5, testConsumer.readIndex)
+    }
+
+    func testReadUInt8Array() {
+        var testConsumer = generateTestConsumer()
+        XCTAssertEqual([0xDE, 0xAD], testConsumer.readUInt8Array(2))
+        XCTAssertEqual([0xBE, 0xEF], testConsumer.readUInt8Array(2))
+        XCTAssertEqual(4 + (32 / 8), testConsumer.readIndex)
     }
 
     func testReadUInt16() {

@@ -1,9 +1,11 @@
 import Foundation
 
-struct BncsMessageComposer: MessageComposer {
+public struct BncsMessageComposer: MessageComposer {
     var data: Foundation.Data = Foundation.Data()
 
-    func build(messageIdentifier: BncsMessageIdentifier) -> BncsMessage {
+    public init() {}
+
+    public func build(messageIdentifier: BncsMessageIdentifier) -> BncsMessage {
 
         var fullMessageComposer = RawMessageComposer()
         fullMessageComposer.write(0xFF as UInt8)

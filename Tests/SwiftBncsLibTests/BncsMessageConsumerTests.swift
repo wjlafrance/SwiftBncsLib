@@ -25,4 +25,19 @@ class BncsMessageConsumerTests: XCTestCase {
         XCTAssertEqual(testConsumer.debugDescription, "BncsMessageConsumer<idx: 4, msg: \(testConsumer.message.debugDescription)")
     }
 
+    func testFromUInt8Array() {
+        let incompletePingData: [UInt8] = [0xFF, 0x25, 0x08, 0x00]
+
+        var testInputUInt8Array = [UInt8]()
+        testInputUInt8Array.append(contentsOf: BncsMessage.exampleRegistryMessageData.arrayOfBytes())
+        testInputUInt8Array.append(contentsOf: BncsMessage.examplePingMessageData.arrayOfBytes())
+        testInputUInt8Array.append(contentsOf: incompletePingData) // incomplete message
+
+        let (messages, remainingBytes) = BncsMessageConsumer.fromUInt8Array(testInputUInt8Array)
+        XCTAssertEqual(messages.count, 2)
+        XCTAssertEqual(messages[0].message.identifier, BncsMessageIdentifier.Registry)
+        XCTAssertEqual(messages[1].message.identifier, BncsMessageIdentifier.Ping)
+        XCTAssertEqual(remainingBytes, incompletePingData)
+    }
+
 }

@@ -27,7 +27,7 @@ let package = Package(
             dependencies: []),
         .target(
             name: "SwiftBncs",
-            dependencies: ["SwiftBncsLib"]),
+            dependencies: ["SwiftBncsLib", "NIO"]),
         .testTarget(
             name: "SwiftBncsLibTests",
             dependencies: ["SwiftBncsLib"]),

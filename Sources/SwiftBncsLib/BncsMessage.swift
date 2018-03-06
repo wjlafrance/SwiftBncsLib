@@ -6,8 +6,8 @@ enum BncsMessageError: Error {
     case IncorrectMessageLength
 }
 
-struct BncsMessage: Message, CustomDebugStringConvertible {
-    var data: Foundation.Data
+public struct BncsMessage: Message, CustomDebugStringConvertible {
+    public var data: Foundation.Data
 
     init(data: Foundation.Data) throws {
 
@@ -43,7 +43,7 @@ struct BncsMessage: Message, CustomDebugStringConvertible {
 
     //MARK: CustomDebugStringConvertible
 
-    var debugDescription: String {
+    public var debugDescription: String {
         return "BncsMessage (\(identifier)):\n\(data.hexDescription)"
     }
 
