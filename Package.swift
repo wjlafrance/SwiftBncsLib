@@ -11,6 +11,9 @@ let package = Package(
             name: "SwiftBncs",
             targets: ["SwiftBncs"]),
         .library(
+            name: "SwiftBncsNIO",
+            targets: ["SwiftBncsLib"]),
+        .library(
             name: "SwiftBncsLib",
             targets: ["SwiftBncsLib"]),
     ],
@@ -25,9 +28,11 @@ let package = Package(
         .target(
             name: "SwiftBncsLib",
             dependencies: []),
+        .target(name: "SwiftBncsNIO",
+            dependencies: ["SwiftBncsLib", "NIO"]),
         .target(
             name: "SwiftBncs",
-            dependencies: ["SwiftBncsLib", "NIO"]),
+            dependencies: ["SwiftBncsLib", "SwiftBncsNIO", "NIO"]),
         .testTarget(
             name: "SwiftBncsLibTests",
             dependencies: ["SwiftBncsLib"]),

@@ -1,5 +1,6 @@
 import NIO
 import SwiftBncsLib
+import SwiftBncsNIO
 import Foundation
 
 extension SwiftBncsLib.Message {
@@ -12,49 +13,68 @@ extension SwiftBncsLib.Message {
 
 }
 
-private final class BncsMessageCodec: ByteToMessageDecoder {
-    public typealias InboundIn = ByteBuffer
-    public typealias InboundOut = BncsMessage
-
-    public var cumulationBuffer: ByteBuffer?
-
-    public func decode(ctx: ChannelHandlerContext, buffer: inout ByteBuffer) throws -> DecodingState {
-        guard buffer.readableBytes >= 4 else {
-            return .needMoreData
-        }
-
-        let length = buffer.withUnsafeReadableBytes { urbp in
-            return Int(urbp[2]) | Int(urbp[3] >> 8)
-        }
-
-        guard buffer.readableBytes >= length else {
-            return .needMoreData
-        }
-
-        do {
-            let message = try BncsMessage(data: Data(bytes: buffer.readBytes(length: length)!))
-            ctx.fireChannelRead(self.wrapInboundOut(message))
-        } catch (let error) {
-            print("Error in BncsMessageCodec: \(error)")
-        }
-
-        return .continue
-    }
-}
-
-private final class ChatHandler: ChannelInboundHandler {
+class BattleNetHandler: ChannelInboundHandler {
     public typealias InboundIn = BncsMessage
     public typealias OutboundOut = ByteBuffer
 
     var incomingBuffer = [UInt8]()
+
+    /// Called when the `Channel` has successfully registered with its `EventLoop` to handle I/O.
+    public func channelRegistered(ctx: ChannelHandlerContext) {
+        ctx.fireChannelRegistered()
+
+        print("[BNCS] Connecting...")
+    }
+
+    /// Called when the `Channel` has become active, and is able to send and receive data.
+    public func channelActive(ctx: ChannelHandlerContext) {
+        ctx.fireChannelActive()
+
+        print("[BNCS] Connected to \(ctx.channel.remoteAddress!).")
+
+        var protocolByteBuffer = ctx.channel.allocator.buffer(capacity: 1)
+        protocolByteBuffer.write(bytes: [1])
+        let _ = ctx.channel.writeAndFlush(protocolByteBuffer)
+
+        var composer = BncsMessageComposer()
+        composer.write(0 as UInt32)
+        composer.write(BncsPlatformIdentifier.IntelX86.rawValue)
+        composer.write(BncsProductIdentifier.Diablo2.rawValue)
+        composer.write(0x0E as UInt32)
+        composer.write(BncsLanguageIdentifier.EnglishUnitedStates.rawValue)
+        composer.write(0 as UInt32)
+        composer.write(0 as UInt32)
+        composer.write(0 as UInt32)
+        composer.write(0 as UInt32)
+        composer.write("USA")
+        composer.write("United States")
+        print("[BNCS] Sending auth info...")
+        let authInfoMessage = composer.build(messageIdentifier: BncsMessageIdentifier.AuthInfo)
+        let _ = authInfoMessage.writeToChannel(ctx.channel)
+    }
+
+    /// Called when the `Channel` has become inactive and is no longer able to send and receive data`.
+    public func channelInactive(ctx: ChannelHandlerContext) {
+        ctx.fireChannelInactive()
+
+        print("[BNCS] Disconnected.")
+    }
 
     public func channelRead(ctx: ChannelHandlerContext, data: NIOAny) {
         let message = self.unwrapInboundIn(data)
         var consumer = BncsMessageConsumer(message: message)
 
         switch consumer.message.identifier {
+            case .Null:
+                let _ = BncsMessageComposer().build(messageIdentifier: .Null).writeToChannel(ctx.channel)
+                print("[BNCS] Keep-alive.")
+
             case .Ping:
-                print("[BNCS] Ping!")
+                let cookie = consumer.readUInt32()
+                var composer = BncsMessageComposer()
+                composer.write(cookie)
+                let _ = composer.build(messageIdentifier: .Ping).writeToChannel(ctx.channel)
+                print("[BNCS] Ping.")
 
             case .AuthInfo:
                 print("[BNCS] Received auth challenge.")
@@ -72,7 +92,7 @@ private final class ChatHandler: ChannelInboundHandler {
     }
 
     public func errorCaught(ctx: ChannelHandlerContext, error: Error) {
-        print("error: ", error)
+        print("[BNCS] Error: ", error)
 
         // As we are not really interested getting notified on success or failure we just pass nil as promise to
         // reduce allocations.
@@ -85,58 +105,19 @@ let bootstrap = ClientBootstrap(group: group)
     // Enable SO_REUSEADDR.
     .channelOption(ChannelOptions.socket(SocketOptionLevel(SOL_SOCKET), SO_REUSEADDR), value: 1)
     .channelInitializer { channel in
-        channel.pipeline.add(handler: BncsMessageCodec()).then { v in
-            channel.pipeline.add(handler: ChatHandler())
+        channel.pipeline.add(handler: SwiftBncsNIO.ByteToBncsMessageDecoder()).then { v in
+            channel.pipeline.add(handler: BattleNetHandler())
         }
     }
 defer {
     try! group.syncShutdownGracefully()
+
 }
 
 print("[BNCS] Connecting...")
 let channel = try bootstrap.connect(host: "useast.battle.net", port: 6112).wait()
 
-print("[BNCS] Connected to \(channel.remoteAddress!).")
-
-var protocolByteBuffer = channel.allocator.buffer(capacity: 1)
-protocolByteBuffer.write(bytes: [1])
-try! channel.writeAndFlush(protocolByteBuffer).wait()
-
-var composer = BncsMessageComposer()
-composer.write(0 as UInt32)
-composer.write(BncsPlatformIdentifier.IntelX86.rawValue)
-composer.write(BncsProductIdentifier.Diablo2.rawValue)
-composer.write(0xD5 as UInt32)
-composer.write(BncsLanguageIdentifier.EnglishUnitedStates.rawValue)
-composer.write(0 as UInt32)
-composer.write(0 as UInt32)
-composer.write(0 as UInt32)
-composer.write(0 as UInt32)
-composer.write("USA")
-composer.write("United States")
-let authInfoMessage = composer.build(messageIdentifier: BncsMessageIdentifier.AuthInfo)
-print(authInfoMessage)
-
-
-print("[BNCS] Sending auth info...")
-try! authInfoMessage.writeToChannel(channel).wait()
-
-
-
-//while let line = readLine(strippingNewline: false) {
-//    var buffer = channel.allocator.buffer(capacity: line.utf8.count)
-//    buffer.write(string: line)
-//    try! channel.writeAndFlush(buffer).wait()
-//}
-
-// EOF, close connect
-//try! channel.read()
-
-while let _ = readLine(strippingNewline: false) {
-//    var buffer = channel.allocator.buffer(capacity: line.utf8.count)
-//    buffer.write(string: line)
-//    try! channel.writeAndFlush(buffer).wait()
-}
+try channel.closeFuture.wait()
 
 
 //try! channel.close().wait()
