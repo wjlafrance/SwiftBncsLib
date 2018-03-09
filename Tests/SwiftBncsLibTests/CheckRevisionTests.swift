@@ -10,9 +10,7 @@ class CheckRevisionTests: XCTestCase {
         let (version, hash, info) = try CheckRevision.hash(
             mpqFileNumber: 7,
             challenge: "B=676679339 C=4153317847 A=2798954125 4 A=A^S B=B-C C=C+A A=A^B",
-            files: [
-                URL(fileURLWithPath: "\(pathPrefix)/extern/hashfiles/D2DV/Game.exe")
-            ]
+            files: ["\(pathPrefix)/extern/hashfiles/D2DV/Game.exe"]
         )
 
         XCTAssertEqual(version, 0x010E0300)
@@ -24,9 +22,7 @@ class CheckRevisionTests: XCTestCase {
         let (version, hash, info) = try CheckRevision.hash(
             mpqFileNumber: 0,
             challenge: "A=1262984606 B=3951383673 C=2230464239 4 A=A+S B=B-C C=C^A A=A-B",
-            files: [
-                URL(fileURLWithPath: "\(pathPrefix)/extern/hashfiles/D2XP/Game.exe")
-            ]
+            files: ["\(pathPrefix)/extern/hashfiles/D2XP/Game.exe"]
         )
 
         XCTAssertEqual(version, 0x010E0300)

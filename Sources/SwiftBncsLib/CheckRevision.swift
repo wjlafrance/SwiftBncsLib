@@ -36,7 +36,26 @@ public enum CheckRevision {
 
     private static let InitialXorValues: [UInt32] = [ 0xE7F4CB62, 0xF6A14FFC, 0xAA5504AF, 0x871FCDC2, 0x11BF6A18, 0xC57292E6, 0x7927D27E, 0x2FEC8733 ]
 
-    public static func hash(mpqFileNumber: Int, challenge: String, files: [URL]) throws -> CheckRevisionResult {
+    private static func fileInfoString(file: String) throws -> String {
+        let attributes = try FileManager.default.attributesOfItem(atPath: file)
+        guard let creationDate = attributes[.creationDate] as? Date else {
+            throw CheckRevisionError.fileError
+        }
+        guard let size = attributes[.size] as? Int else {
+            throw CheckRevisionError.fileError
+        }
+
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "MM/dd/yy HH:mm:ss"
+        dateFormatter.timeZone = TimeZone.init(secondsFromGMT: 0)
+        let timestamp = dateFormatter.string(from: creationDate)
+
+        let filename = URL(fileURLWithPath: file).lastPathComponent
+
+        return "\(filename) \(timestamp) \(size)"
+    }
+
+    public static func hash(mpqFileNumber: Int, challenge: String, files: [String]) throws -> CheckRevisionResult {
 
         func valueIndex(character: CChar) -> Int? {
             switch character {
@@ -93,9 +112,9 @@ public enum CheckRevision {
 
         values[0] ^= UInt64(InitialXorValues[mpqFileNumber])
 
-        for fileURL in files {
+        for filePath in files {
 
-            guard let fileData = try? Data(contentsOf: fileURL) else {
+            guard let fileData = try? Data(contentsOf: URL(fileURLWithPath: filePath)) else {
                 throw CheckRevisionError.fileError
             }
 
@@ -125,9 +144,9 @@ public enum CheckRevision {
         }
 
         return (
-            version: try! PortableExecutableUtil.getVersion(fileURL: files[0]),
+            version: try PortableExecutableUtil.getVersion(file: files[0]),
             hash: UInt32(truncatingIfNeeded: values[2]),
-            info: ""
+            info: try fileInfoString(file: files[0])
         )
     }
 }

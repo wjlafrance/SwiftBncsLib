@@ -17,9 +17,9 @@ enum PortableExecutableUtil {
 
     static let PEStartOffset = 0x3C
 
-    static func getVersion(fileURL: URL) throws -> UInt32 {
+    static func getVersion(file: String) throws -> UInt32 {
 
-        let bytes = try Data(contentsOf: fileURL).arrayOfBytes()
+        let bytes = try Data(contentsOf: URL(fileURLWithPath: file)).arrayOfBytes()
 
         let peStart = Int(bytes[PEStartOffset]) | Int(bytes[PEStartOffset + 1]) << 8
 
@@ -103,8 +103,6 @@ enum PortableExecutableUtil {
         let numberNameEntries = Int(bytes[ptrRecord + 12]) | Int(bytes[ptrRecord + 13]) >> 8
         let numberIDEntries = Int(bytes[ptrRecord + 14]) | Int(bytes[ptrRecord + 15]) >> 8
 
-        print("numberNameEntries: \(numberNameEntries), numberIDEntries: \(numberIDEntries)")
-
         let ptrIDEntriesBase = ptrRecord + 16 + (numberNameEntries * 8)
 
         for i in 0..<numberIDEntries {
@@ -137,8 +135,6 @@ enum PortableExecutableUtil {
 
         var tree = tree
         tree.append(thisIdentifier)
-
-        print(tree)
 
         if nextAddress & 0x80000000 != 0 {
             // branch

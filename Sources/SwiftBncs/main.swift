@@ -86,9 +86,27 @@ class BattleNetHandler: ChannelInboundHandler {
                 let challenge   = consumer.readNullTerminatedString()
                 print("[BNCS] Auth challenge received. Login type \(loginType), MPQ \(mpqFilename) (\(mpqFiletime)), challenge: \(challenge).")
 
-//                print(try? CheckRevision.hash(mpqFilename: mpqFilename, challenge: challenge, files: [
-//                    URL(fileURLWithPath: "/Users/lafrance/dev/SwiftBncsLib/extern/hashfiles/D2DV/Game.exe")
-//                ]))
+                let mpqFileNumber = Int(mpqFilename.cString(using: .ascii)![9] - 0x30)
+
+                do {
+                    let checkRevisionResults = try CheckRevision.hash(mpqFileNumber: mpqFileNumber, challenge: challenge, files: [
+                        "/Users/lafrance/dev/SwiftBncsLib/extern/hashfiles/D2DV/Game.exe"
+                    ])
+
+                    var composer = BncsMessageComposer()
+                    composer.write(300 as UInt32) // client token
+                    composer.write(checkRevisionResults.version)
+                    composer.write(checkRevisionResults.hash)
+                    composer.write(0 as UInt32) // keys
+                    composer.write(0 as UInt32) // spawn
+                    composer.write(checkRevisionResults.info)
+                    composer.write("SwiftBot")
+                    print("[BNCS] Sending auth check...")
+                    let authCheckMessage = composer.build(messageIdentifier: BncsMessageIdentifier.AuthCheck)
+                    let _ = authCheckMessage.writeToChannel(ctx.channel)
+                } catch (let error) {
+                    print("Error calculating CheckRevision(): \(error)")
+                }
 
             default:
                 print("No parser for this packet!\n\(consumer)")
