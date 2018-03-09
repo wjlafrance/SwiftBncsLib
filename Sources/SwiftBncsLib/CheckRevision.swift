@@ -52,7 +52,6 @@ public enum CheckRevision {
         var equations = [CheckRevisionEquation]()
 
         for challengeToken in challenge.split(separator: " ") {
-            print("challengeToken: \(challengeToken)")
 
             if !challengeToken.contains("=") {
                 continue;
@@ -126,7 +125,7 @@ public enum CheckRevision {
         }
 
         return (
-            version: 0,
+            version: try! PortableExecutableUtil.getVersion(fileURL: files[0]),
             hash: UInt32(truncatingIfNeeded: values[2]),
             info: ""
         )
