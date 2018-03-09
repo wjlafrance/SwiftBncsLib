@@ -83,8 +83,12 @@ class BattleNetHandler: ChannelInboundHandler {
                 let udpValue    = consumer.readUInt32()
                 let mpqFiletime = consumer.readUInt64()
                 let mpqFilename = consumer.readNullTerminatedString()
-                let valueString = consumer.readNullTerminatedString()
-                print("[BNCS] Auth challenge received. Login type \(loginType), MPQ \(mpqFilename) (\(mpqFiletime)), challenge: \(valueString).")
+                let challenge   = consumer.readNullTerminatedString()
+                print("[BNCS] Auth challenge received. Login type \(loginType), MPQ \(mpqFilename) (\(mpqFiletime)), challenge: \(challenge).")
+
+//                print(try? CheckRevision.hash(mpqFilename: mpqFilename, challenge: challenge, files: [
+//                    URL(fileURLWithPath: "/Users/lafrance/dev/SwiftBncsLib/extern/hashfiles/D2DV/Game.exe")
+//                ]))
 
             default:
                 print("No parser for this packet!\n\(consumer)")
