@@ -37,7 +37,7 @@ public struct BncsMessage: Message, CustomDebugStringConvertible {
             return x
         }
 
-        return BncsMessageIdentifier.Unknown
+        return BncsMessageIdentifier.None
     }
 
     //MARK: CustomDebugStringConvertible

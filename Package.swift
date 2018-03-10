@@ -12,7 +12,7 @@ let package = Package(
             targets: ["SwiftBncs"]),
         .library(
             name: "SwiftBncsNIO",
-            targets: ["SwiftBncsLib"]),
+            targets: ["SwiftBncsNIO"]),
         .library(
             name: "SwiftBncsLib",
             targets: ["SwiftBncsLib"]),

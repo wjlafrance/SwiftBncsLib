@@ -3,21 +3,14 @@ import SwiftBncsLib
 import SwiftBncsNIO
 import Foundation
 
-extension SwiftBncsLib.Message {
-
-    func writeToChannel(_ channel: Channel) -> EventLoopFuture<Void> {
-        var buffer = channel.allocator.buffer(capacity: self.data.count)
-        buffer.write(bytes: self.data.arrayOfBytes())
-        return channel.writeAndFlush(buffer)
-    }
-
-}
-
 class BattleNetHandler: ChannelInboundHandler {
     public typealias InboundIn = BncsMessage
     public typealias OutboundOut = ByteBuffer
 
     var incomingBuffer = [UInt8]()
+
+    let clientToken = arc4random_uniform(UInt32.max)
+    var serverToken: UInt32 = 0
 
     /// Called when the `Channel` has successfully registered with its `EventLoop` to handle I/O.
     public func channelRegistered(ctx: ChannelHandlerContext) {
@@ -79,7 +72,7 @@ class BattleNetHandler: ChannelInboundHandler {
             case .AuthInfo:
                 print("[BNCS] Received auth challenge.")
                 let loginType   = consumer.readUInt32()
-                let serverToken = consumer.readUInt32()
+                serverToken = consumer.readUInt32()
                 let udpValue    = consumer.readUInt32()
                 let mpqFiletime = consumer.readUInt64()
                 let mpqFilename = consumer.readNullTerminatedString()
@@ -112,6 +105,72 @@ class BattleNetHandler: ChannelInboundHandler {
                     print("Error calculating CheckRevision(): \(error)")
                 }
 
+            case .AuthCheck:
+                let authCheckResult = consumer.readUInt32()
+                if authCheckResult == 0 {
+                    print("[BNCS] Auth check passed! Logging in..")
+
+                    let passwordHash = "".data(using: .ascii)!.doubleXsha1(clientToken: clientToken, serverToken: serverToken)
+                    var composer = BncsMessageComposer()
+                    composer.write(clientToken)
+                    composer.write(serverToken)
+                    composer.write(passwordHash)
+                    composer.write("") // username
+                    let loginResponseMessage = composer.build(messageIdentifier: BncsMessageIdentifier.LoginResponse2)
+                    let _ = loginResponseMessage.writeToChannel(ctx.channel)
+
+                } else {
+                    print("[BNCS] Auth check failed. \(authCheckResult)")
+                }
+
+            case .RequiredWork:
+                let mpqFilename = consumer.readNullTerminatedString()
+                print("[BNCS] Required work: \(mpqFilename)")
+
+            case .LoginResponse2:
+                let status = consumer.readUInt32()
+                switch status {
+                    case 0:
+                        print("[BNCS] Login successful! Entering chat.")
+
+                        var enterChatComposer = BncsMessageComposer()
+                        enterChatComposer.write("")
+                        enterChatComposer.write("")
+                        let _ = enterChatComposer.build(messageIdentifier: .EnterChat).writeToChannel(ctx.channel)
+
+                        var joinChannelComposer = BncsMessageComposer()
+                        joinChannelComposer.write(1 as UInt32) // first join -- contrary to bnet docs, 1 is used by D2 as well
+                        joinChannelComposer.write("Diablo II") // channel name
+                        let _ = joinChannelComposer.build(messageIdentifier: .JoinChannel).writeToChannel(ctx.channel)
+
+                        var chatCommandComposer = BncsMessageComposer()
+                        chatCommandComposer.write("/join Clan BoT")
+                        let _ = chatCommandComposer.build(messageIdentifier: .ChatCommand).writeToChannel(ctx.channel)
+
+                    case 1: print("[BNCS] Account does not exist.")
+                    case 2: print("[BNCS] Wrong password.")
+                    case 6: print("[BNCS] Account does closed.")
+                    default: print("[BNCS] Unknown login response code: \(status).")
+                }
+
+            case .EnterChat:
+                let uniqueUsername = consumer.readNullTerminatedString()
+                let statstring = consumer.readNullTerminatedString()
+                let accountName = consumer.readNullTerminatedString()
+                print("[BNCS] Entered chat with unique username '\(uniqueUsername)', statstring '\(statstring)', account name '\(accountName)'.")
+
+            case .ChatEvent:
+                let eventId = BncsChatEvent(rawValue: consumer.readUInt32())
+                let userFlags = consumer.readUInt32()
+                let ping = consumer.readUInt32()
+                let _ = consumer.readUInt32() // defunct, ip address
+                let _ = consumer.readUInt32() // defunct, account number
+                let _ = consumer.readUInt32() // defunct, registration authority
+                let username = consumer.readNullTerminatedString()
+                let text = consumer.readNullTerminatedString()
+
+                print("ChatEvent \(eventId), flags \(userFlags), ping \(ping), username \(username), text \(text)")
+
             default:
                 print("No parser for this packet!\n\(consumer)")
         }
@@ -140,13 +199,8 @@ defer {
 
 }
 
-print("[BNCS] Connecting...")
 let channel = try bootstrap.connect(host: "useast.battle.net", port: 6112).wait()
 
 try channel.closeFuture.wait()
 
-
-//try! channel.close().wait()
-
-//print("[BNCS] Disconnected.")
 

@@ -1,12 +1,18 @@
 public enum BncsMessageIdentifier: UInt8 {
 
-    case Null      = 0x00
-    case Registry  = 0x18
-    case Ping      = 0x25
-    case AuthInfo  = 0x50
-    case AuthCheck = 0x51
-    case Unknown   = 0xFF
+    case Null           = 0x00
+    case EnterChat      = 0x0A
+    case JoinChannel    = 0x0C
+    case ChatCommand    = 0x0E
+    case ChatEvent      = 0x0F
+    case Registry       = 0x18
+    case Ping           = 0x25
+    case LoginResponse2 = 0x3A
+    case RequiredWork   = 0x4C
+    case AuthInfo       = 0x50
+    case AuthCheck      = 0x51
 
+    case None           = 0xFF
 }
 
 
@@ -64,7 +70,18 @@ public enum BncsProductIdentifier: UInt32 {
     case Warcraft3Expansion = 0x57335850 // W3XP
 
     var isValidBncsClient: Bool {
-        let invalidBncsClients: [BncsProductIdentifier] = [.Telnet, .Starcraft, .StarcraftExpansion, .StarcraftShareware, .StarcraftJapan, .DiabloShareware, .DiabloBeta, .DiabloStressTest, .Diablo2StressTest, .Warcraft3Demo]
+        let invalidBncsClients: [BncsProductIdentifier] = [
+            .Telnet,
+            .Starcraft,
+            .StarcraftExpansion,
+            .StarcraftShareware,
+            .StarcraftJapan,
+            .DiabloShareware,
+            .DiabloBeta,
+            .DiabloStressTest,
+            .Diablo2StressTest,
+            .Warcraft3Demo
+        ]
 
         return !invalidBncsClients.contains(self)
     }
@@ -78,5 +95,33 @@ public enum BncsProductIdentifier: UInt32 {
 
         self = x
     }
+
+}
+
+public enum BncsChatEvent: UInt32 {
+
+    case showUser            = 0x01
+    case join                = 0x02
+    case leave               = 0x03
+    case whisper             = 0x04
+    case talk                = 0x05
+    case broadcast           = 0x06
+    case channel             = 0x07
+    // 0x08
+    case userflags           = 0x09
+    case whisperSent         = 0x0A
+    // 0x0b
+    // 0x0c
+    case channelFull         = 0x0D
+    case channelDoesNotExist = 0x0E
+    case channelRestricted   = 0x0F
+    // 0x10
+    // 0x11
+    case info                = 0x12
+    case error               = 0x13
+    // 0x14
+//    case ignore = 0x15 // defunct
+//    case accept = 0x16 // defunct
+    case emote               = 0x17
 
 }

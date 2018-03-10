@@ -4,7 +4,7 @@ internal typealias XSha1State = (UInt32, UInt32, UInt32, UInt32, UInt32)
 
 extension Foundation.Data {
 
-    func xsha1() -> XSha1State {
+    func xsha1() -> Data {
         let seed: XSha1State = (0x67452301, 0xEFCDAB89, 0x98BADCFE, 0x10325476, 0xC3D2E1F0)
 
         // x86 ROL instruction emulation: ROL value, shift
@@ -60,7 +60,21 @@ extension Foundation.Data {
         state.3 = state.3 &+ seed.3
         state.4 = state.4 &+ seed.4
 
-        return state
+        var composer = RawMessageComposer()
+        composer.write(state.0)
+        composer.write(state.1)
+        composer.write(state.2)
+        composer.write(state.3)
+        composer.write(state.4)
+        return composer.build()
+    }
+
+    public func doubleXsha1(clientToken: UInt32, serverToken: UInt32) -> Data {
+        var composer = RawMessageComposer()
+        composer.write(clientToken)
+        composer.write(serverToken)
+        composer.write(self.xsha1())
+        return composer.build().xsha1()
     }
 
 }

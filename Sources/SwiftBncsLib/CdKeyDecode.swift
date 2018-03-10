@@ -63,6 +63,8 @@ public struct CdKeyDecode {
     var value2: [UInt8] = []
 
     public init(cdkey: String) {
+        precondition(cdkey.count == 26)
+
         var table = [UInt8](repeating: 0, count: CdKeyDecode.W3_BUFLEN)
         var values: [UInt32] = [0, 0, 0, 0]
 
@@ -192,7 +194,6 @@ public struct CdKeyDecode {
         dataComposer.write(value1)
         dataComposer.write(0 as UInt32) // unknown
         dataComposer.write(hash)
-
         return dataComposer.build()
     }
 
