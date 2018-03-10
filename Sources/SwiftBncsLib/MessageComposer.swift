@@ -15,13 +15,17 @@ struct RawMessageComposer: MessageComposer {
 
     var data: Foundation.Data = Foundation.Data()
 
-    func build(messageIdentifier: ()) -> Foundation.Data {
+    func build(messageIdentifier: () = ()) -> Foundation.Data {
         return data
     }
 
 }
 
 extension MessageComposer {
+
+    public mutating func write(_ x: Data) {
+        data.append(x)
+    }
 
     public mutating func write(_ x: UInt8) {
         data.append(x)

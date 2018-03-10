@@ -1,6 +1,7 @@
 import Foundation
+import CryptoSwift
 
-class CdKeyDecode {
+public struct CdKeyDecode {
 
     static let KeyTable: [UInt8] = [
         0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
@@ -61,7 +62,7 @@ class CdKeyDecode {
     var value1: UInt32 = 0
     var value2: [UInt8] = []
 
-    init(cdkey: String) {
+    public init(cdkey: String) {
         var table = [UInt8](repeating: 0, count: CdKeyDecode.W3_BUFLEN)
         var values: [UInt32] = [0, 0, 0, 0]
 
@@ -174,4 +175,39 @@ class CdKeyDecode {
         }
     }
 
+    public func hashForAuthCheck(clientToken: UInt32, serverToken: UInt32) -> Data {
+        var hashComposer = RawMessageComposer()
+        hashComposer.write(clientToken)
+        hashComposer.write(serverToken)
+        hashComposer.write(productValue)
+        hashComposer.write(value1)
+        for x in value2 {
+            hashComposer.write(x)
+        }
+        let hash = Data(hashComposer.build()).sha1()
+
+        var dataComposer = RawMessageComposer()
+        dataComposer.write(26 as UInt32) // length
+        dataComposer.write(productValue)
+        dataComposer.write(value1)
+        dataComposer.write(0 as UInt32) // unknown
+        dataComposer.write(hash)
+
+        return dataComposer.build()
+    }
+
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+

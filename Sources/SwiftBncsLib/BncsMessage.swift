@@ -37,7 +37,6 @@ public struct BncsMessage: Message, CustomDebugStringConvertible {
             return x
         }
 
-        assertionFailure("Attempted to find BncsMessageIdentifier for unknown ID: \(rawIdentifier)")
         return BncsMessageIdentifier.Unknown
     }
 

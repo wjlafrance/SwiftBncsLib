@@ -97,8 +97,12 @@ class BattleNetHandler: ChannelInboundHandler {
                     composer.write(300 as UInt32) // client token
                     composer.write(checkRevisionResults.version)
                     composer.write(checkRevisionResults.hash)
-                    composer.write(0 as UInt32) // keys
+                    composer.write(1 as UInt32) // keys
                     composer.write(0 as UInt32) // spawn
+
+                    let hash = CdKeyDecode(cdkey: "").hashForAuthCheck(clientToken: 300, serverToken: serverToken)
+                    composer.write(hash)
+
                     composer.write(checkRevisionResults.info)
                     composer.write("SwiftBot")
                     print("[BNCS] Sending auth check...")
