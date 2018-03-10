@@ -23,13 +23,10 @@ enum PortableExecutableUtil {
 
         let peStart = Int(bytes[PEStartOffset]) | Int(bytes[PEStartOffset + 1]) << 8
 
-        let peSignature: UInt32 = {
-            var x = UInt32(bytes[peStart])
-            x |= UInt32(bytes[peStart + 1]) << 8
-            x |= UInt32(bytes[peStart + 2]) << 16
-            x |= UInt32(bytes[peStart + 3]) << 24
-            return x
-        }()
+        let peSignature = IntUtil.from8to32([
+            bytes[peStart],     bytes[peStart + 1],
+            bytes[peStart + 2], bytes[peStart + 3]
+        ])
 
         guard peSignature == 0x00004550 else {
             throw PortableExecutableError.invalidSignature
@@ -47,46 +44,31 @@ enum PortableExecutableUtil {
         /* PE+ files have the first ("magic") byte set to 0x20b */
         let isPePlus = 0x020b == (UInt16(bytes[ptrOptionalHeader]) | UInt16(bytes[ptrOptionalHeader + 1]) << 8)
 
-        let numberOfRvaAndSizes: Int = {
-            var x = Int(bytes[ptrOptionalHeader + (isPePlus ? 108 : 92)])
-            x |= Int(bytes[ptrOptionalHeader + (isPePlus ? 109 : 93)]) << 8
-            x |= Int(bytes[ptrOptionalHeader + (isPePlus ? 110 : 94)]) << 16
-            x |= Int(bytes[ptrOptionalHeader + (isPePlus ? 111 : 95)]) << 24
-            return x
-        }()
+        let numberOfRvaAndSizes = Int(IntUtil.from8to32([
+            bytes[ptrOptionalHeader + (isPePlus ? 108 : 92)], bytes[ptrOptionalHeader + (isPePlus ? 109 : 93)],
+            bytes[ptrOptionalHeader + (isPePlus ? 110 : 94)], bytes[ptrOptionalHeader + (isPePlus ? 111 : 95)]
+        ]))
 
         let ptrSectionTable = ptrOptionalHeader + 96 + (numberOfRvaAndSizes * 8)
 
         for i in 0..<numberOfSections {
             let ptrSectionBase = ptrSectionTable + i * 40
-            let virtualStart: Int = {
-                var x = Int(bytes[ptrSectionBase + 12])
-                x |= Int(bytes[ptrSectionBase + 13]) << 8
-                x |= Int(bytes[ptrSectionBase + 14]) << 16
-                x |= Int(bytes[ptrSectionBase + 15]) << 24
-                return x
-            }()
-            let rawStart: Int = {
-                var x = Int(bytes[ptrSectionBase + 20])
-                x |= Int(bytes[ptrSectionBase + 21]) << 8
-                x |= Int(bytes[ptrSectionBase + 22]) << 16
-                x |= Int(bytes[ptrSectionBase + 23]) << 24
-                return x
-            }()
-            let rsrcVirtualToRaw = rawStart - virtualStart
+            let virtualStart = Int(IntUtil.from8to32([
+                bytes[ptrSectionBase + 12], bytes[ptrSectionBase + 13],
+                bytes[ptrSectionBase + 14], bytes[ptrSectionBase + 15]
+            ]))
+            let rawStart = Int(IntUtil.from8to32([
+                bytes[ptrSectionBase + 20], bytes[ptrSectionBase + 21],
+                bytes[ptrSectionBase + 22], bytes[ptrSectionBase + 23]
+            ]))
+            let sectionType = Int(IntUtil.from8to64([
+                bytes[ptrSectionBase],     bytes[ptrSectionBase + 1],
+                bytes[ptrSectionBase + 2], bytes[ptrSectionBase + 3],
+                bytes[ptrSectionBase + 4], bytes[ptrSectionBase + 5],
+                bytes[ptrSectionBase + 6], bytes[ptrSectionBase + 7]
+            ]))
 
-            // 0x000000637273722EL
-            let sectionType: Int = {
-                var x = Int(bytes[ptrSectionBase])
-                x |= Int(bytes[ptrSectionBase + 1]) << 8
-                x |= Int(bytes[ptrSectionBase + 2]) << 16
-                x |= Int(bytes[ptrSectionBase + 3]) << 24
-                x |= Int(bytes[ptrSectionBase + 4]) << 32
-                x |= Int(bytes[ptrSectionBase + 5]) << 40
-                x |= Int(bytes[ptrSectionBase + 6]) << 48
-                x |= Int(bytes[ptrSectionBase + 7]) << 56
-                return x
-            }()
+            let rsrcVirtualToRaw = rawStart - virtualStart
 
             if sectionType == 0x000000637273722E {
                 return processResourceRecord(bytes: bytes, recordOffset: 0, rsrcStart: rawStart, rsrcVirtualToRaw: rsrcVirtualToRaw)
@@ -100,8 +82,12 @@ enum PortableExecutableUtil {
     static func processResourceRecord(bytes: [UInt8], recordOffset: Int, rsrcStart: Int, rsrcVirtualToRaw: Int, tree: [Int] = []) -> UInt32 {
         let ptrRecord = rsrcStart + recordOffset
 
-        let numberNameEntries = Int(bytes[ptrRecord + 12]) | Int(bytes[ptrRecord + 13]) >> 8
-        let numberIDEntries = Int(bytes[ptrRecord + 14]) | Int(bytes[ptrRecord + 15]) >> 8
+        let numberNameEntries = Int(IntUtil.from8to16([
+            bytes[ptrRecord + 12], bytes[ptrRecord + 13]
+        ]))
+        let numberIDEntries = Int(IntUtil.from8to16([
+            bytes[ptrRecord + 14], bytes[ptrRecord + 15]
+        ]))
 
         let ptrIDEntriesBase = ptrRecord + 16 + (numberNameEntries * 8)
 
@@ -118,20 +104,14 @@ enum PortableExecutableUtil {
     }
 
     static func processEntry(bytes: [UInt8], ptrEntry: Int, rsrcStart: Int, rsrcVirtualToRaw: Int, tree: [Int]) -> UInt32 {
-        let thisIdentifier: Int = {
-            var x = Int(bytes[ptrEntry])
-            x |= Int(bytes[ptrEntry + 1]) << 8
-            x |= Int(bytes[ptrEntry + 2]) << 16
-            x |= Int(bytes[ptrEntry + 3]) << 24
-            return x
-        }()
-        let nextAddress: Int = {
-            var x = Int(bytes[ptrEntry + 4])
-            x |= Int(bytes[ptrEntry + 5]) << 8
-            x |= Int(bytes[ptrEntry + 6]) << 16
-            x |= Int(bytes[ptrEntry + 7]) << 24
-            return x
-        }()
+        let thisIdentifier = Int(IntUtil.from8to32([
+            bytes[ptrEntry],     bytes[ptrEntry + 1],
+            bytes[ptrEntry + 2], bytes[ptrEntry + 3]
+        ]))
+        let nextAddress    = Int(IntUtil.from8to32([
+            bytes[ptrEntry + 4], bytes[ptrEntry + 5],
+            bytes[ptrEntry + 6], bytes[ptrEntry + 7]
+        ]))
 
         var tree = tree
         tree.append(thisIdentifier)
@@ -146,20 +126,10 @@ enum PortableExecutableUtil {
             // leaf
             if tree.first! == 16 { // RT_VERSION
 
-                let rawDataAddress: Int = {
-                    var x = Int(bytes[rsrcStart + nextAddress])
-                    x |= Int(bytes[rsrcStart + nextAddress + 1]) << 8
-                    x |= Int(bytes[rsrcStart + nextAddress + 2]) << 16
-                    x |= Int(bytes[rsrcStart + nextAddress + 3]) << 24
-                    return x + rsrcVirtualToRaw
-                }()
-//                let dataSize: Int = {
-//                    var x = Int(bytes[rsrcStart + nextAddress + 4])
-//                    x |= Int(bytes[rsrcStart + nextAddress + 5]) << 8
-//                    x |= Int(bytes[rsrcStart + nextAddress + 6]) << 16
-//                    x |= Int(bytes[rsrcStart + nextAddress + 7]) << 24
-//                    return x
-//                }()
+                let rawDataAddress = Int(IntUtil.from8to32([
+                    bytes[rsrcStart + nextAddress],     bytes[rsrcStart + nextAddress + 1],
+                    bytes[rsrcStart + nextAddress + 2], bytes[rsrcStart + nextAddress + 3]
+                ])) + rsrcVirtualToRaw
 
                 var version = UInt32(bytes[rawDataAddress + 0x3C])
                 version |= UInt32(bytes[rawDataAddress + 0x3E]) << 8
