@@ -55,6 +55,11 @@ public enum CheckRevision {
         return "\(filename) \(timestamp) \(size)"
     }
 
+    public static func numberForMpqFilename(_ mpqFilename: String) -> Int {
+        // ver-IX86-6.mpq
+        return Int(mpqFilename.cString(using: .ascii)![9] - 0x30)
+    }
+
     public static func hash(mpqFileNumber: Int, challenge: String, files: [String]) throws -> CheckRevisionResult {
 
         func valueIndex(character: CChar) -> Int? {

@@ -62,7 +62,7 @@ public struct CdKeyDecode {
     var value1: UInt32 = 0
     var value2: [UInt8] = []
 
-    public init(cdkey: String) {
+    public init(cdkey: String) throws {
         precondition(cdkey.count == 26)
 
         var table = [UInt8](repeating: 0, count: CdKeyDecode.W3_BUFLEN)
@@ -161,11 +161,11 @@ public struct CdKeyDecode {
         for edi: UInt32 in 0..<120 {
 
             let esi = (edi * 0x0B) % 120
-            let eax = edi & 0x1F;
-            let ecx = esi & 0x1F;
-            let edx = 3 - (edi >> 5);
+            let eax = edi & 0x1F
+            let ecx = esi & 0x1F
+            let edx = 3 - (edi >> 5)
 
-            let location = 12 - ((esi >> 5) << 2);
+            let location = 12 - ((esi >> 5) << 2)
             valueMessageConsumer.readIndex = Data.Index(location)
 
             let ebp = (valueMessageConsumer.readUInt32() & (1 << ecx)) >> ecx
@@ -198,17 +198,3 @@ public struct CdKeyDecode {
     }
 
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-

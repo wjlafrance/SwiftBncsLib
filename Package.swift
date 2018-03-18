@@ -10,6 +10,9 @@ let package = Package(
         .executable(
             name: "SwiftBncs",
             targets: ["SwiftBncs"]),
+        .executable(
+            name: "SwiftBnls",
+            targets: ["SwiftBnls"]),
         .library(
             name: "SwiftBncsNIO",
             targets: ["SwiftBncsNIO"]),
@@ -33,6 +36,9 @@ let package = Package(
             dependencies: ["SwiftBncsLib", "NIO"]),
         .target(
             name: "SwiftBncs",
+            dependencies: ["SwiftBncsLib", "SwiftBncsNIO", "NIO"]),
+        .target(
+            name: "SwiftBnls",
             dependencies: ["SwiftBncsLib", "SwiftBncsNIO", "NIO"]),
         .testTarget(
             name: "SwiftBncsLibTests",

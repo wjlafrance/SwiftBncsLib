@@ -190,7 +190,7 @@ let bootstrap = ClientBootstrap(group: group)
     // Enable SO_REUSEADDR.
     .channelOption(ChannelOptions.socket(SocketOptionLevel(SOL_SOCKET), SO_REUSEADDR), value: 1)
     .channelInitializer { channel in
-        channel.pipeline.add(handler: SwiftBncsNIO.ByteToBncsMessageDecoder()).then { v in
+        channel.pipeline.add(handler: SwiftBncsNIO.ByteBufferToBncsMessageDecoder()).then { v in
             channel.pipeline.add(handler: BattleNetHandler())
         }
     }
