@@ -41,7 +41,7 @@ class CdKeyDecodeTests: XCTestCase {
         ))
 
         for tc in testCases {
-            let x = CdKeyDecode(cdkey: tc.key)
+            let x = try! CdKeyDecode(cdkey: tc.key)
             XCTAssertEqual(x.productValue, tc.product)
             XCTAssertEqual(x.value1, tc.value1)
             XCTAssertEqual(x.value2, tc.value2)

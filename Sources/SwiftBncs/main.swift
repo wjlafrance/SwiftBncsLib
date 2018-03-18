@@ -87,13 +87,13 @@ class BattleNetHandler: ChannelInboundHandler {
                     ])
 
                     var composer = BncsMessageComposer()
-                    composer.write(300 as UInt32) // client token
+                    composer.write(clientToken) // client token
                     composer.write(checkRevisionResults.version)
                     composer.write(checkRevisionResults.hash)
                     composer.write(1 as UInt32) // keys
                     composer.write(0 as UInt32) // spawn
 
-                    let hash = CdKeyDecode(cdkey: "").hashForAuthCheck(clientToken: 300, serverToken: serverToken)
+                    let hash = try! CdKeyDecode(cdkey: "").hashForAuthCheck(clientToken: clientToken, serverToken: serverToken)
                     composer.write(hash)
 
                     composer.write(checkRevisionResults.info)
