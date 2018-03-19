@@ -1,7 +1,7 @@
 import Foundation
 import CryptoSwift
 
-public struct CdKeyDecode {
+public struct CdkeyDecodeAlpha26 {
 
     static let KeyTable: [UInt8] = [
         0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
@@ -65,13 +65,13 @@ public struct CdKeyDecode {
     public init(cdkey: String) throws {
         precondition(cdkey.count == 26)
 
-        var table = [UInt8](repeating: 0, count: CdKeyDecode.W3_BUFLEN)
+        var table = [UInt8](repeating: 0, count: CdkeyDecodeAlpha26.W3_BUFLEN)
         var values: [UInt32] = [0, 0, 0, 0]
 
         tableLookup(key: cdkey.uppercased().utf8CString.map { Int($0) }, buf: &table)
 
         // Multiplication rounds
-        for i in (0..<CdKeyDecode.W3_BUFLEN).reversed() {
+        for i in (0..<CdkeyDecodeAlpha26.W3_BUFLEN).reversed() {
             var input = table[i]
 
             for position in (0..<4).reversed() {
@@ -103,11 +103,11 @@ public struct CdKeyDecode {
         var a = 0
         var b = 0x21
 
-        for i in 0..<CdKeyDecode.W3_KEYLEN {
-            a = (b + 0x07B5) % CdKeyDecode.W3_BUFLEN
-            b = (a + 0x07B5) % CdKeyDecode.W3_BUFLEN
+        for i in 0..<CdkeyDecodeAlpha26.W3_KEYLEN {
+            a = (b + 0x07B5) % CdkeyDecodeAlpha26.W3_BUFLEN
+            b = (a + 0x07B5) % CdkeyDecodeAlpha26.W3_BUFLEN
 
-            let decode = CdKeyDecode.KeyTable[key[i]]
+            let decode = CdkeyDecodeAlpha26.KeyTable[key[i]]
             buf[a] = decode / 5
             buf[b] = decode % 5
         }
@@ -126,8 +126,8 @@ public struct CdKeyDecode {
                 for j in stride(from: 29, to: var_8, by: -1) {
                     let ecx = (j & 7) << 2
                     let ebp = (keyTable[0x03 - (Int(j) >> 3)] & (0x0F << ecx)) >> ecx
-                    ebx = UInt32(CdKeyDecode.TranslateTable[Int(ebx + i)])
-                    ebx = UInt32(CdKeyDecode.TranslateTable[Int(ebp ^ ebx + i)])
+                    ebx = UInt32(CdkeyDecodeAlpha26.TranslateTable[Int(ebx + i)])
+                    ebx = UInt32(CdkeyDecodeAlpha26.TranslateTable[Int(ebp ^ ebx + i)])
                 }
             }
 
@@ -138,12 +138,12 @@ public struct CdKeyDecode {
                     var ebp = keyTable[Int(0x3 - (j >> 3))]
                     ebp &= (0xF << ecx)
                     ebp = ebp >> ecx
-                    ebx = UInt32(CdKeyDecode.TranslateTable[Int(ebx + i)])
-                    ebx = UInt32(CdKeyDecode.TranslateTable[Int(ebp ^ ebx + i)])
+                    ebx = UInt32(CdkeyDecodeAlpha26.TranslateTable[Int(ebx + i)])
+                    ebx = UInt32(CdkeyDecodeAlpha26.TranslateTable[Int(ebp ^ ebx + i)])
                 }
             }
 
-            ebx = (UInt32(CdKeyDecode.TranslateTable[Int(ebx + i)]) & 0x0F) << esi;
+            ebx = (UInt32(CdkeyDecodeAlpha26.TranslateTable[Int(ebx + i)]) & 0x0F) << esi;
 
             keyTable[outputIndex] = ebx | ~(0x0F << esi) & keyTable[outputIndex]
         }

@@ -8,8 +8,8 @@ let package = Package(
     products: [
         // Products define the executables and libraries produced by a package, and make them visible to other packages.
         .executable(
-            name: "SwiftBncs",
-            targets: ["SwiftBncs"]),
+            name: "SwiftBncsClient",
+            targets: ["SwiftBncsClient"]),
         .executable(
             name: "SwiftBnls",
             targets: ["SwiftBnls"]),
@@ -35,7 +35,7 @@ let package = Package(
         .target(name: "SwiftBncsNIO",
             dependencies: ["SwiftBncsLib", "NIO"]),
         .target(
-            name: "SwiftBncs",
+            name: "SwiftBncsClient",
             dependencies: ["SwiftBncsLib", "SwiftBncsNIO", "NIO"]),
         .target(
             name: "SwiftBnls",

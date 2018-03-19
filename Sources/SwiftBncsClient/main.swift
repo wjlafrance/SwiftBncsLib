@@ -3,11 +3,26 @@ import SwiftBncsLib
 import SwiftBncsNIO
 import Foundation
 
+
 class BattleNetHandler: ChannelInboundHandler {
+
     public typealias InboundIn = BncsMessage
     public typealias OutboundOut = ByteBuffer
 
-    var incomingBuffer = [UInt8]()
+    enum BattleNetConnectionStatus {
+        case connecting
+        case authorizing
+        case loggingIn
+        case connected
+    }
+
+    var channel: Channel!
+
+    var state: BattleNetConnectionStatus = .connecting {
+        didSet {
+            print("[BNCS] Status changed from \(oldValue) to \(state).")
+        }
+    }
 
     let clientToken = arc4random_uniform(UInt32.max)
     var serverToken: UInt32 = 0
@@ -16,7 +31,11 @@ class BattleNetHandler: ChannelInboundHandler {
     public func channelRegistered(ctx: ChannelHandlerContext) {
         ctx.fireChannelRegistered()
 
+        channel = ctx.channel
+
         print("[BNCS] Connecting...")
+
+        state = .connecting
     }
 
     /// Called when the `Channel` has become active, and is able to send and receive data.
@@ -25,9 +44,11 @@ class BattleNetHandler: ChannelInboundHandler {
 
         print("[BNCS] Connected to \(ctx.channel.remoteAddress!).")
 
-        var protocolByteBuffer = ctx.channel.allocator.buffer(capacity: 1)
+        state = .authorizing
+
+        var protocolByteBuffer = channel.allocator.buffer(capacity: 1)
         protocolByteBuffer.write(bytes: [1])
-        let _ = ctx.channel.writeAndFlush(protocolByteBuffer)
+        let _ = channel.writeAndFlush(protocolByteBuffer)
 
         var composer = BncsMessageComposer()
         composer.write(0 as UInt32)
@@ -43,7 +64,7 @@ class BattleNetHandler: ChannelInboundHandler {
         composer.write("United States")
         print("[BNCS] Sending auth info...")
         let authInfoMessage = composer.build(messageIdentifier: BncsMessageIdentifier.AuthInfo)
-        let _ = authInfoMessage.writeToChannel(ctx.channel)
+        let _ = authInfoMessage.writeToChannel(channel)
     }
 
     /// Called when the `Channel` has become inactive and is no longer able to send and receive data`.
@@ -72,7 +93,7 @@ class BattleNetHandler: ChannelInboundHandler {
             case .AuthInfo:
                 print("[BNCS] Received auth challenge.")
                 let loginType   = consumer.readUInt32()
-                serverToken = consumer.readUInt32()
+                serverToken     = consumer.readUInt32()
                 let udpValue    = consumer.readUInt32()
                 let mpqFiletime = consumer.readUInt64()
                 let mpqFilename = consumer.readNullTerminatedString()
@@ -93,7 +114,7 @@ class BattleNetHandler: ChannelInboundHandler {
                     composer.write(1 as UInt32) // keys
                     composer.write(0 as UInt32) // spawn
 
-                    let hash = try! CdKeyDecode(cdkey: "").hashForAuthCheck(clientToken: clientToken, serverToken: serverToken)
+                    let hash = try! CdkeyDecodeAlpha26(cdkey: "").hashForAuthCheck(clientToken: clientToken, serverToken: serverToken)
                     composer.write(hash)
 
                     composer.write(checkRevisionResults.info)
@@ -110,6 +131,8 @@ class BattleNetHandler: ChannelInboundHandler {
                 if authCheckResult == 0 {
                     print("[BNCS] Auth check passed! Logging in..")
 
+                    state = .loggingIn
+
                     let passwordHash = "".data(using: .ascii)!.doubleXsha1(clientToken: clientToken, serverToken: serverToken)
                     var composer = BncsMessageComposer()
                     composer.write(clientToken)
@@ -118,6 +141,7 @@ class BattleNetHandler: ChannelInboundHandler {
                     composer.write("") // username
                     let loginResponseMessage = composer.build(messageIdentifier: BncsMessageIdentifier.LoginResponse2)
                     let _ = loginResponseMessage.writeToChannel(ctx.channel)
+
 
                 } else {
                     print("[BNCS] Auth check failed. \(authCheckResult)")
@@ -159,6 +183,8 @@ class BattleNetHandler: ChannelInboundHandler {
                 let accountName = consumer.readNullTerminatedString()
                 print("[BNCS] Entered chat with unique username '\(uniqueUsername)', statstring '\(statstring)', account name '\(accountName)'.")
 
+                state = .connected
+
             case .ChatEvent:
                 let eventId = BncsChatEvent(rawValue: consumer.readUInt32())
                 let userFlags = consumer.readUInt32()
@@ -196,11 +222,30 @@ let bootstrap = ClientBootstrap(group: group)
     }
 defer {
     try! group.syncShutdownGracefully()
-
 }
 
-let channel = try bootstrap.connect(host: "useast.battle.net", port: 6112).wait()
+/*
+ Non-authoritative answer:
+ Name:    useast.battle.net
+ Address: 199.108.55.57
+ Name:    useast.battle.net
+ Address: 199.108.55.55
+ Name:    useast.battle.net
+ Address: 199.108.55.56
+ Name:    useast.battle.net
+ Address: 199.108.55.54
+ Name:    useast.battle.net
+ Address: 199.108.55.59
+ Name:    useast.battle.net
+ Address: 199.108.55.60
+ Name:    useast.battle.net
+ Address: 199.108.55.61
+ Name:    useast.battle.net
+ Address: 199.108.55.62
+ Name:    useast.battle.net
+ Address: 199.108.55.58
+*/
+
+let channel = try bootstrap.connect(host: "199.108.55.54", port: 6112).wait()
 
 try channel.closeFuture.wait()
-
-

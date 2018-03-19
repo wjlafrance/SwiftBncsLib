@@ -48,7 +48,7 @@ class BnlsHandler: ChannelInboundHandler {
                 for index in 0..<keysCount {
                     let key = messageReader.readNullTerminatedString()
                     do {
-                        hashedKeys.append(try CdKeyDecode(cdkey: key).hashForAuthCheck(clientToken: clientToken, serverToken: serverToken))
+                        hashedKeys.append(try CdkeyDecodeAlpha26(cdkey: key).hashForAuthCheck(clientToken: clientToken, serverToken: serverToken))
                         bitmask |= (1 << index) // successful key hash
                         successfulHashCount += 1
                     } catch (let error) {
