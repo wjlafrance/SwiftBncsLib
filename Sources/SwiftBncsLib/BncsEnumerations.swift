@@ -7,7 +7,7 @@ public enum BncsMessageIdentifier: UInt8 {
     case ChatEvent      = 0x0F
     case Registry       = 0x18
     case Ping           = 0x25
-    case LoginResponse2 = 0x3A
+    case LogonResponse2 = 0x3A
     case RequiredWork   = 0x4C
     case AuthInfo       = 0x50
     case AuthCheck      = 0x51
@@ -124,5 +124,17 @@ public enum BncsChatEvent: UInt32 {
 //    case ignore = 0x15 // defunct
 //    case accept = 0x16 // defunct
     case emote               = 0x17
+
+}
+
+public enum LogonResponse2Status: UInt32 {
+
+    case success             = 0
+    case accountDoesNotExist = 1
+    case invalidPassword     = 2
+    // 3
+    // 4
+    // 5
+    case accountClosed       = 6
 
 }

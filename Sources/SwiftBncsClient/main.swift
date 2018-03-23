@@ -3,6 +3,16 @@ import SwiftBncsLib
 import SwiftBncsNIO
 import Foundation
 
+/*
+ useast  199.108.55.54-62
+ w3 beta 37.244.26.200
+*/
+private enum BotConfig {
+    static let server = "37.244.26.200"
+    static let username = "joe)x86("
+    static let password = ""
+    static let cdkey = ""
+}
 
 class BattleNetHandler: ChannelInboundHandler {
 
@@ -11,16 +21,39 @@ class BattleNetHandler: ChannelInboundHandler {
 
     enum BattleNetConnectionStatus {
         case connecting
+        case socketOpened
         case authorizing
         case loggingIn
         case connected
+        case disconnecting
+        case disconnected
     }
 
     var channel: Channel!
 
-    var state: BattleNetConnectionStatus = .connecting {
+    private var state: BattleNetConnectionStatus = .disconnected {
         didSet {
             print("[BNCS] Status changed from \(oldValue) to \(state).")
+
+            switch state {
+                case .connecting:
+                    print("[BNCS] Connecting...")
+
+                case .socketOpened:
+                    print("[BNCS] Connected to \(channel.remoteAddress!).")
+                    sendProtocolByteAndAuthInfo()
+
+                case .disconnecting:
+                    print("[BNCS] Disconnecting..")
+                    let _ = channel.close(mode: .all)
+
+                case .disconnected:
+                    print("[BNCS] Disconnected.")
+
+                default:
+                    let _ = 0
+//                    print("[BNCS] Status changed from \(oldValue) to \(state).")
+            }
         }
     }
 
@@ -29,21 +62,33 @@ class BattleNetHandler: ChannelInboundHandler {
 
     /// Called when the `Channel` has successfully registered with its `EventLoop` to handle I/O.
     public func channelRegistered(ctx: ChannelHandlerContext) {
-        ctx.fireChannelRegistered()
-
         channel = ctx.channel
 
-        print("[BNCS] Connecting...")
+        ctx.fireChannelRegistered()
 
-        state = .connecting
+//        state = .connecting
+
+        if state == .disconnected {
+            state = .connecting
+        }
     }
 
     /// Called when the `Channel` has become active, and is able to send and receive data.
     public func channelActive(ctx: ChannelHandlerContext) {
         ctx.fireChannelActive()
 
-        print("[BNCS] Connected to \(ctx.channel.remoteAddress!).")
+        state = .socketOpened
 
+    }
+
+    /// Called when the `Channel` has become inactive and is no longer able to send and receive data`.
+    public func channelInactive(ctx: ChannelHandlerContext) {
+        ctx.fireChannelInactive()
+
+        state = .disconnected
+    }
+
+    func sendProtocolByteAndAuthInfo() {
         state = .authorizing
 
         var protocolByteBuffer = channel.allocator.buffer(capacity: 1)
@@ -62,32 +107,29 @@ class BattleNetHandler: ChannelInboundHandler {
         composer.write(0 as UInt32)
         composer.write("USA")
         composer.write("United States")
-        print("[BNCS] Sending auth info...")
         let authInfoMessage = composer.build(messageIdentifier: BncsMessageIdentifier.AuthInfo)
         let _ = authInfoMessage.writeToChannel(channel)
     }
 
-    /// Called when the `Channel` has become inactive and is no longer able to send and receive data`.
-    public func channelInactive(ctx: ChannelHandlerContext) {
-        ctx.fireChannelInactive()
-
-        print("[BNCS] Disconnected.")
-    }
-
     public func channelRead(ctx: ChannelHandlerContext, data: NIOAny) {
         let message = self.unwrapInboundIn(data)
+
+        processMessage(message)
+    }
+
+    func processMessage(_ message: BncsMessage) {
         var consumer = BncsMessageConsumer(message: message)
 
         switch consumer.message.identifier {
             case .Null:
-                let _ = BncsMessageComposer().build(messageIdentifier: .Null).writeToChannel(ctx.channel)
+                let _ = BncsMessageComposer().build(messageIdentifier: .Null).writeToChannel(channel)
                 print("[BNCS] Keep-alive.")
 
             case .Ping:
                 let cookie = consumer.readUInt32()
                 var composer = BncsMessageComposer()
                 composer.write(cookie)
-                let _ = composer.build(messageIdentifier: .Ping).writeToChannel(ctx.channel)
+                let _ = composer.build(messageIdentifier: .Ping).writeToChannel(channel)
                 print("[BNCS] Ping.")
 
             case .AuthInfo:
@@ -114,14 +156,14 @@ class BattleNetHandler: ChannelInboundHandler {
                     composer.write(1 as UInt32) // keys
                     composer.write(0 as UInt32) // spawn
 
-                    let hash = try! CdkeyDecodeAlpha26(cdkey: "").hashForAuthCheck(clientToken: clientToken, serverToken: serverToken)
+                    let hash = try! CdkeyDecodeAlpha26(cdkey: BotConfig.cdkey).hashForAuthCheck(clientToken: clientToken, serverToken: serverToken)
                     composer.write(hash)
 
                     composer.write(checkRevisionResults.info)
                     composer.write("SwiftBot")
                     print("[BNCS] Sending auth check...")
                     let authCheckMessage = composer.build(messageIdentifier: BncsMessageIdentifier.AuthCheck)
-                    let _ = authCheckMessage.writeToChannel(ctx.channel)
+                    let _ = authCheckMessage.writeToChannel(channel)
                 } catch (let error) {
                     print("Error calculating CheckRevision(): \(error)")
                 }
@@ -133,48 +175,53 @@ class BattleNetHandler: ChannelInboundHandler {
 
                     state = .loggingIn
 
-                    let passwordHash = "".data(using: .ascii)!.doubleXsha1(clientToken: clientToken, serverToken: serverToken)
+                    let passwordHash = BotConfig.password.data(using: .ascii)!.doubleXsha1(clientToken: clientToken, serverToken: serverToken)
                     var composer = BncsMessageComposer()
                     composer.write(clientToken)
                     composer.write(serverToken)
                     composer.write(passwordHash)
-                    composer.write("") // username
-                    let loginResponseMessage = composer.build(messageIdentifier: BncsMessageIdentifier.LoginResponse2)
-                    let _ = loginResponseMessage.writeToChannel(ctx.channel)
-
+                    composer.write(BotConfig.username) // username
+                    let logonResponseMessage = composer.build(messageIdentifier: BncsMessageIdentifier.LogonResponse2)
+                    let _ = logonResponseMessage.writeToChannel(channel)
 
                 } else {
                     print("[BNCS] Auth check failed. \(authCheckResult)")
+                    state = .disconnecting
                 }
 
             case .RequiredWork:
                 let mpqFilename = consumer.readNullTerminatedString()
                 print("[BNCS] Required work: \(mpqFilename)")
 
-            case .LoginResponse2:
-                let status = consumer.readUInt32()
+            case .LogonResponse2:
+                let rawStatus = consumer.readUInt32()
+                guard let status = LogonResponse2Status(rawValue: rawStatus) else {
+                    print("[BNCS] Illegal logon response: \(rawStatus).")
+                    state = .disconnecting
+                    return
+                }
+
                 switch status {
-                    case 0:
+                    case .success:
                         print("[BNCS] Login successful! Entering chat.")
 
                         var enterChatComposer = BncsMessageComposer()
                         enterChatComposer.write("")
                         enterChatComposer.write("")
-                        let _ = enterChatComposer.build(messageIdentifier: .EnterChat).writeToChannel(ctx.channel)
+                        let _ = enterChatComposer.build(messageIdentifier: .EnterChat).writeToChannel(channel)
 
                         var joinChannelComposer = BncsMessageComposer()
                         joinChannelComposer.write(1 as UInt32) // first join -- contrary to bnet docs, 1 is used by D2 as well
                         joinChannelComposer.write("Diablo II") // channel name
-                        let _ = joinChannelComposer.build(messageIdentifier: .JoinChannel).writeToChannel(ctx.channel)
+                        let _ = joinChannelComposer.build(messageIdentifier: .JoinChannel).writeToChannel(channel)
 
                         var chatCommandComposer = BncsMessageComposer()
-                        chatCommandComposer.write("/join Clan BoT")
-                        let _ = chatCommandComposer.build(messageIdentifier: .ChatCommand).writeToChannel(ctx.channel)
+                        chatCommandComposer.write("/join PTR")
+                        let _ = chatCommandComposer.build(messageIdentifier: .ChatCommand).writeToChannel(channel)
 
-                    case 1: print("[BNCS] Account does not exist.")
-                    case 2: print("[BNCS] Wrong password.")
-                    case 6: print("[BNCS] Account does closed.")
-                    default: print("[BNCS] Unknown login response code: \(status).")
+                    default:
+                        print("[BNCS] Logon failed: \(status).")
+                        state = .disconnecting
                 }
 
             case .EnterChat:
@@ -224,28 +271,5 @@ defer {
     try! group.syncShutdownGracefully()
 }
 
-/*
- Non-authoritative answer:
- Name:    useast.battle.net
- Address: 199.108.55.57
- Name:    useast.battle.net
- Address: 199.108.55.55
- Name:    useast.battle.net
- Address: 199.108.55.56
- Name:    useast.battle.net
- Address: 199.108.55.54
- Name:    useast.battle.net
- Address: 199.108.55.59
- Name:    useast.battle.net
- Address: 199.108.55.60
- Name:    useast.battle.net
- Address: 199.108.55.61
- Name:    useast.battle.net
- Address: 199.108.55.62
- Name:    useast.battle.net
- Address: 199.108.55.58
-*/
-
-let channel = try bootstrap.connect(host: "199.108.55.54", port: 6112).wait()
-
+let channel = try bootstrap.connect(host: BotConfig.server, port: 6112).wait()
 try channel.closeFuture.wait()
