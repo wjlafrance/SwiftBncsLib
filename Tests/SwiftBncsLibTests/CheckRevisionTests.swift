@@ -30,4 +30,14 @@ class CheckRevisionTests: XCTestCase {
         XCTAssertEqual(info,    "Game.exe 05/31/16 19:02:24 3618792")
     }
 
+    func testCheckRevisionPerformance() {
+        self.measure {
+            let _ = try! CheckRevision.hash(
+                mpqFileNumber: 0,
+                challenge: "A=1262984606 B=3951383673 C=2230464239 4 A=A+S B=B-C C=C^A A=A-B",
+                files: ["\(pathPrefix)/extern/hashfiles/D2XP/Game.exe"]
+            )
+        }
+    }
+
 }
