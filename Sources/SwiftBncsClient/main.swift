@@ -60,17 +60,15 @@ class BattleNetHandler: ChannelInboundHandler {
     let clientToken = arc4random_uniform(UInt32.max)
     var serverToken: UInt32 = 0
 
+    // MARK -
+
     /// Called when the `Channel` has successfully registered with its `EventLoop` to handle I/O.
     public func channelRegistered(ctx: ChannelHandlerContext) {
         channel = ctx.channel
 
         ctx.fireChannelRegistered()
 
-//        state = .connecting
-
-        if state == .disconnected {
-            state = .connecting
-        }
+        state = .connecting
     }
 
     /// Called when the `Channel` has become active, and is able to send and receive data.
@@ -78,7 +76,6 @@ class BattleNetHandler: ChannelInboundHandler {
         ctx.fireChannelActive()
 
         state = .socketOpened
-
     }
 
     /// Called when the `Channel` has become inactive and is no longer able to send and receive data`.
@@ -86,6 +83,14 @@ class BattleNetHandler: ChannelInboundHandler {
         ctx.fireChannelInactive()
 
         state = .disconnected
+    }
+
+    /// MARK -
+
+    func monitorDefunctValues<T: Comparable>(value: T, expected: T, description: String) {
+        if value != expected {
+            print("[BNCS] Unexpected value in defunct field. Description: \(description), value: \(value).")
+        }
     }
 
     func sendProtocolByteAndAuthInfo() {
@@ -195,7 +200,7 @@ class BattleNetHandler: ChannelInboundHandler {
 
             case .LogonResponse2:
                 let rawStatus = consumer.readUInt32()
-                guard let status = LogonResponse2Status(rawValue: rawStatus) else {
+                guard let status = BncsLogonResponse2Status(rawValue: rawStatus) else {
                     print("[BNCS] Illegal logon response: \(rawStatus).")
                     state = .disconnecting
                     return
@@ -233,16 +238,29 @@ class BattleNetHandler: ChannelInboundHandler {
                 state = .connected
 
             case .ChatEvent:
-                let eventId = BncsChatEvent(rawValue: consumer.readUInt32())
-                let userFlags = consumer.readUInt32()
+                let rawEventId = consumer.readUInt32()
+                let flags = consumer.readUInt32()
                 let ping = consumer.readUInt32()
-                let _ = consumer.readUInt32() // defunct, ip address
-                let _ = consumer.readUInt32() // defunct, account number
-                let _ = consumer.readUInt32() // defunct, registration authority
+                monitorDefunctValues(value: consumer.readUInt32(), expected: 0, description: "SID_CHATEVENT field 3, IP address")
+                monitorDefunctValues(value: consumer.readUInt32(), expected: 0xBAADF00D, description: "SID_CHATEVENT field 4, account number")
+                monitorDefunctValues(value: consumer.readUInt32(), expected: 0xBAADF00D, description: "SID_CHATEVENT field 5, registration authority")
                 let username = consumer.readNullTerminatedString()
                 let text = consumer.readNullTerminatedString()
 
-                print("ChatEvent \(eventId), flags \(userFlags), ping \(ping), username \(username), text \(text)")
+                guard let eventId = BncsChatEventIdentifier(rawValue: rawEventId) else {
+                    print("[BNCS] Unrecognized chat event ID \(rawEventId). Username: \(username), text: \(text), flags: \(flags), ping: \(ping).")
+                    return
+                }
+                
+                let chatEvent = BncsChatEvent(
+                    identifier: eventId,
+                    username: username,
+                    text: text,
+                    flags: flags,
+                    ping: ping
+                )
+
+                print("ChatEvent: \(chatEvent)")
 
             default:
                 print("No parser for this packet!\n\(consumer)")

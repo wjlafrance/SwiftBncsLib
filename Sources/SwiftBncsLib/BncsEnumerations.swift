@@ -40,6 +40,7 @@ public enum BncsPlatformIdentifier: UInt32 {
 
         self = x
     }
+
 }
 
 
@@ -99,7 +100,8 @@ public enum BncsProductIdentifier: UInt32 {
 
 }
 
-public enum BncsChatEvent: UInt32 {
+
+public enum BncsChatEventIdentifier: UInt32 {
 
     case showUser            = 0x01
     case join                = 0x02
@@ -127,7 +129,8 @@ public enum BncsChatEvent: UInt32 {
 
 }
 
-public enum LogonResponse2Status: UInt32 {
+
+public enum BncsLogonResponse2Status: UInt32 {
 
     case success             = 0
     case accountDoesNotExist = 1
