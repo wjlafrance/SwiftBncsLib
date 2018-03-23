@@ -13,7 +13,10 @@ public extension OutputStream {
     }
 
     public func write(data: Foundation.Data) {
-        write(bytes: data.arrayOfBytes())
+        var dataCopy = data
+        let _ = dataCopy.withUnsafeMutableBytes { contents in
+            return write(contents, maxLength: data.count)
+        }
     }
 
 }

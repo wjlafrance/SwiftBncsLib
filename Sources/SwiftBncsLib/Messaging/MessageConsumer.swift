@@ -23,11 +23,11 @@ struct RawMessageConsumer: MessageConsumer {
 extension MessageConsumer {
 
     var bytesRemaining: Int {
-        return message.data.arrayOfBytes().count - readIndex
+        return message.data.count - readIndex
     }
 
     public mutating func readUInt8() -> UInt8 {
-        let x = message.data.arrayOfBytes()[readIndex]
+        let x: UInt8 = message.data.withUnsafeBytes({ return $0[readIndex] })
         readIndex += 1
         return x
     }

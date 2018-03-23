@@ -7,11 +7,12 @@ public struct BnlsMessageComposer: MessageComposer {
     public init() {}
 
     public func build(messageIdentifier: BnlsMessageIdentifier) -> BnlsMessage {
+        precondition(messageIdentifier != .None)
 
         var fullMessageComposer = RawMessageComposer()
         fullMessageComposer.write(UInt16(3 + data.count))
         fullMessageComposer.write(messageIdentifier.rawValue)
-        fullMessageComposer.write(data.arrayOfBytes())
+        fullMessageComposer.write(data)
 
         do {
             return try BnlsMessage(data: fullMessageComposer.data)

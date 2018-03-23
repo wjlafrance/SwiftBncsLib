@@ -11,6 +11,7 @@ public enum BncsMessageIdentifier: UInt8 {
     case RequiredWork   = 0x4C
     case AuthInfo       = 0x50
     case AuthCheck      = 0x51
+    case SetEmail       = 0x59
 
     case None           = 0xFF
 }

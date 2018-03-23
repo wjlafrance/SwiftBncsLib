@@ -6,12 +6,13 @@ public struct BncsMessageComposer: MessageComposer {
     public init() {}
 
     public func build(messageIdentifier: BncsMessageIdentifier) -> BncsMessage {
+        precondition(messageIdentifier != .None)
 
         var fullMessageComposer = RawMessageComposer()
         fullMessageComposer.write(0xFF as UInt8)
         fullMessageComposer.write(messageIdentifier.rawValue)
         fullMessageComposer.write(UInt16(4 + data.count))
-        fullMessageComposer.write(data.arrayOfBytes())
+        fullMessageComposer.write(data)
 
         do {
             return try BncsMessage(data: fullMessageComposer.data)

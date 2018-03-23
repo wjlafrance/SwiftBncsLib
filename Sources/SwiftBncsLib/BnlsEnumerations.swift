@@ -6,7 +6,8 @@ public enum BnlsMessageIdentifier: UInt8 {
     case AuthorizeProof     = 0x0F
     case RequestVersionByte = 0x10
     case VersionCheckEx2    = 0x1A
-    case Unknown            = 0xFF
+
+    case None               = 0xFF
 }
 
 public enum BnlsProductIdentifier: UInt32 {

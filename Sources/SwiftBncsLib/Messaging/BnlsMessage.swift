@@ -16,8 +16,7 @@ public struct BnlsMessage: Message, CustomDebugStringConvertible {
         }
 
         // Check length matches
-        guard data.count == Int(data.arrayOfBytes()[0]) |
-                           (Int(data.arrayOfBytes()[1]) << 8) else {
+        guard data.count == data.withUnsafeBytes({ IntUtil.from8to16([$0[0], $0[1]]) }) else {
             throw BnlsMessageError.IncorrectMessageLength
         }
 
@@ -25,14 +24,11 @@ public struct BnlsMessage: Message, CustomDebugStringConvertible {
     }
 
     public var identifier: BnlsMessageIdentifier {
-        let rawIdentifier = data.arrayOfBytes()[2]
+        // Check entire header is present -- precondition is fine here, guard is used in init
+        precondition(data.count > 3)
 
-        if let x = BnlsMessageIdentifier(rawValue: rawIdentifier) {
-            return x
-        }
-
-        assertionFailure("Attempted to find BnlsMessageIdentifier for unknown ID: \(rawIdentifier)")
-        return BnlsMessageIdentifier.Unknown
+        let rawIdentifier: UInt8 = data.withUnsafeBytes { return $0[2] }
+        return BnlsMessageIdentifier(rawValue: rawIdentifier) ?? .None
     }
 
     //MARK: CustomDebugStringConvertible
