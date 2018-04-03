@@ -12,35 +12,44 @@ class BattleNetHandler: ChannelInboundHandler {
         case socketOpened
         case authorizing
         case loggingIn
-        case connected
+        case connected(username: String, statstring: String, account: String)
         case disconnecting
-        case disconnected
+        case disconnected(error: Error?)
     }
 
-    var channel: Channel!
+    var netChannel: Channel!
+    var chatChannel = ChatChannel(name: "The Void")
 
-    private var state: BattleNetConnectionStatus = .disconnected {
+    private var state: BattleNetConnectionStatus = .disconnected(error: nil) {
         didSet {
             print("[BNCS] Status changed from \(oldValue) to \(state).")
 
             switch state {
-            case .connecting:
-                print("[BNCS] Connecting...")
+                case .connecting:
+                    print("[BNCS] Connecting...")
 
-            case .socketOpened:
-                print("[BNCS] Connected to \(channel.remoteAddress!).")
-                sendProtocolByteAndAuthInfo()
+                case .socketOpened:
+                    print("[BNCS] Connected to \(netChannel.remoteAddress!).")
+                    sendProtocolByteAndAuthInfo()
 
-            case .disconnecting:
-                print("[BNCS] Disconnecting..")
-                let _ = channel.close(mode: .all)
+                case .authorizing:
+                    print("[BNCS] Authorizing...")
 
-            case .disconnected:
-                print("[BNCS] Disconnected.")
+                case .loggingIn:
+                    print("[BNCS] Logging in...")
 
-            default:
-                let _ = 0
-                //                    print("[BNCS] Status changed from \(oldValue) to \(state).")
+                case .disconnecting:
+                    print("[BNCS] Disconnecting..")
+                    let _ = netChannel.close(mode: .all)
+
+                case let .connected(username, _, _):
+                    print("[BNCS] Connected to Battle.net as \(username)!")
+
+                case let .disconnected(error) where error != nil:
+                    print("[BNCS] Disconnected with error: \(error.debugDescription).")
+
+                case .disconnected:
+                    print("[BNCS] Disconnected.")
             }
         }
     }
@@ -48,11 +57,11 @@ class BattleNetHandler: ChannelInboundHandler {
     let clientToken = arc4random_uniform(UInt32.max)
     var serverToken: UInt32 = 0
 
-    // MARK -
+    // MARK - ChannelInboundHandler compliance
 
     /// Called when the `Channel` has successfully registered with its `EventLoop` to handle I/O.
     public func channelRegistered(ctx: ChannelHandlerContext) {
-        channel = ctx.channel
+        netChannel = ctx.channel
 
         ctx.fireChannelRegistered()
 
@@ -70,7 +79,21 @@ class BattleNetHandler: ChannelInboundHandler {
     public func channelInactive(ctx: ChannelHandlerContext) {
         ctx.fireChannelInactive()
 
-        state = .disconnected
+        state = .disconnected(error: nil)
+    }
+
+    public func channelRead(ctx: ChannelHandlerContext, data: NIOAny) {
+        let message = self.unwrapInboundIn(data)
+
+        processMessage(message)
+    }
+
+    public func errorCaught(ctx: ChannelHandlerContext, error: Error) {
+        state = .disconnected(error: error)
+
+        // As we are not really interested getting notified on success or failure we just pass nil as promise to
+        // reduce allocations.
+        ctx.close(promise: nil)
     }
 
     /// MARK -
@@ -84,9 +107,9 @@ class BattleNetHandler: ChannelInboundHandler {
     func sendProtocolByteAndAuthInfo() {
         state = .authorizing
 
-        var protocolByteBuffer = channel.allocator.buffer(capacity: 1)
+        var protocolByteBuffer = netChannel.allocator.buffer(capacity: 1)
         protocolByteBuffer.write(bytes: [1])
-        let _ = channel.writeAndFlush(protocolByteBuffer)
+        let _ = netChannel.writeAndFlush(protocolByteBuffer)
 
         var composer = BncsMessageComposer()
         composer.write(0 as UInt32)
@@ -101,166 +124,149 @@ class BattleNetHandler: ChannelInboundHandler {
         composer.write("USA")
         composer.write("United States")
         let authInfoMessage = composer.build(messageIdentifier: BncsMessageIdentifier.AuthInfo)
-        let _ = authInfoMessage.writeToChannel(channel)
-    }
-
-    public func channelRead(ctx: ChannelHandlerContext, data: NIOAny) {
-        let message = self.unwrapInboundIn(data)
-
-        processMessage(message)
+        let _ = authInfoMessage.writeToChannel(netChannel)
     }
 
     func processMessage(_ message: BncsMessage) {
         var consumer = BncsMessageConsumer(message: message)
 
         switch consumer.message.identifier {
-        case .Null:
-            let _ = BncsMessageComposer().build(messageIdentifier: .Null).writeToChannel(channel)
-            print("[BNCS] Keep-alive.")
+            case .Null:
+                let _ = BncsMessageComposer().build(messageIdentifier: .Null).writeToChannel(netChannel)
+                print("[BNCS] Keep-alive.")
 
-        case .Ping:
-            let cookie = consumer.readUInt32()
-            var composer = BncsMessageComposer()
-            composer.write(cookie)
-            let _ = composer.build(messageIdentifier: .Ping).writeToChannel(channel)
-            print("[BNCS] Ping.")
+            case .Ping:
+                let cookie = consumer.readUInt32()
+                var composer = BncsMessageComposer()
+                composer.write(cookie)
+                let _ = composer.build(messageIdentifier: .Ping).writeToChannel(netChannel)
+                print("[BNCS] Ping.")
 
-        case .AuthInfo:
-            print("[BNCS] Received auth challenge.")
-            let loginType   = consumer.readUInt32()
-            serverToken     = consumer.readUInt32()
-            let udpValue    = consumer.readUInt32()
-            let mpqFiletime = consumer.readUInt64()
-            let mpqFilename = consumer.readNullTerminatedString()
-            let challenge   = consumer.readNullTerminatedString()
-            print("[BNCS] Auth challenge received. Login type \(loginType), MPQ \(mpqFilename) (\(mpqFiletime)), challenge: \(challenge).")
+            case .AuthInfo:
+                print("[BNCS] Received auth challenge.")
+                let loginType   = consumer.readUInt32()
+                serverToken     = consumer.readUInt32()
+                let _           = consumer.readUInt32() // UDP token
+                let mpqFiletime = consumer.readUInt64()
+                let mpqFilename = consumer.readNullTerminatedString()
+                let challenge   = consumer.readNullTerminatedString()
+                print("[BNCS] Auth challenge received. Login type \(loginType), MPQ \(mpqFilename) (\(mpqFiletime)), challenge: \(challenge).")
 
-            let mpqFileNumber = Int(mpqFilename.cString(using: .ascii)![9] - 0x30)
+                let mpqFileNumber = Int(mpqFilename.cString(using: .ascii)![9] - 0x30)
 
-            do {
-                let checkRevisionResults = try CheckRevision.hash(mpqFileNumber: mpqFileNumber, challenge: challenge, files: [
-                    "/Users/lafrance/dev/SwiftBncsLib/extern/hashfiles/D2DV/Game.exe"
+                do {
+                    let checkRevisionResults = try CheckRevision.hash(mpqFileNumber: mpqFileNumber, challenge: challenge, files: [
+                        "/Users/lafrance/dev/SwiftBncsLib/extern/hashfiles/D2DV/Game.exe"
                     ])
 
-                var composer = BncsMessageComposer()
-                composer.write(clientToken) // client token
-                composer.write(checkRevisionResults.version)
-                composer.write(checkRevisionResults.hash)
-                composer.write(1 as UInt32) // keys
-                composer.write(0 as UInt32) // spawn
+                    var composer = BncsMessageComposer()
+                    composer.write(clientToken) // client token
+                    composer.write(checkRevisionResults.version)
+                    composer.write(checkRevisionResults.hash)
+                    composer.write(1 as UInt32) // keys
+                    composer.write(0 as UInt32) // spawn
 
-                let hash = try! CdkeyDecodeAlpha26(cdkey: BotConfig.cdkey).hashForAuthCheck(clientToken: clientToken, serverToken: serverToken)
-                composer.write(hash)
+                    let hash = try! CdkeyDecodeAlpha26(cdkey: BotConfig.cdkey).hashForAuthCheck(clientToken: clientToken, serverToken: serverToken)
+                    composer.write(hash)
 
-                composer.write(checkRevisionResults.info)
-                composer.write("SwiftBot")
-                print("[BNCS] Sending auth check...")
-                let authCheckMessage = composer.build(messageIdentifier: BncsMessageIdentifier.AuthCheck)
-                let _ = authCheckMessage.writeToChannel(channel)
-            } catch (let error) {
-                print("Error calculating CheckRevision(): \(error)")
+                    composer.write(checkRevisionResults.info)
+                    composer.write("SwiftBot")
+                    print("[BNCS] Sending auth check...")
+                    let authCheckMessage = composer.build(messageIdentifier: BncsMessageIdentifier.AuthCheck)
+                    let _ = authCheckMessage.writeToChannel(netChannel)
+                } catch (let error) {
+                    print("Error calculating CheckRevision(): \(error)")
+                }
+
+            case .AuthCheck:
+                let authCheckResult = consumer.readUInt32()
+                if authCheckResult == 0 {
+                    print("[BNCS] Auth check passed! Logging in..")
+
+                    state = .loggingIn
+
+                    let passwordHash = BotConfig.password.data(using: .ascii)!.doubleXsha1(clientToken: clientToken, serverToken: serverToken)
+                    var composer = BncsMessageComposer()
+                    composer.write(clientToken)
+                    composer.write(serverToken)
+                    composer.write(passwordHash)
+                    composer.write(BotConfig.username) // username
+                    let logonResponseMessage = composer.build(messageIdentifier: BncsMessageIdentifier.LogonResponse2)
+                    let _ = logonResponseMessage.writeToChannel(netChannel)
+
+                } else {
+                    print("[BNCS] Auth check failed. \(authCheckResult)")
+                    state = .disconnecting
+                }
+
+            case .RequiredWork:
+                let mpqFilename = consumer.readNullTerminatedString()
+                print("[BNCS] Required work: \(mpqFilename)")
+
+            case .LogonResponse2:
+                let rawStatus = consumer.readUInt32()
+                guard let status = BncsLogonResponse2Status(rawValue: rawStatus) else {
+                    print("[BNCS] Illegal logon response: \(rawStatus).")
+                    state = .disconnecting
+                    return
+                }
+
+                switch status {
+                    case .success:
+                        print("[BNCS] Login successful! Entering chat.")
+
+                        var enterChatComposer = BncsMessageComposer()
+                        enterChatComposer.write("")
+                        enterChatComposer.write("")
+                        let _ = enterChatComposer.build(messageIdentifier: .EnterChat).writeToChannel(netChannel)
+
+                        var joinChannelComposer = BncsMessageComposer()
+                        joinChannelComposer.write(1 as UInt32) // first join -- contrary to bnet docs, 1 is used by D2 as well
+                        joinChannelComposer.write("Diablo II") // channel name
+                        let _ = joinChannelComposer.build(messageIdentifier: .JoinChannel).writeToChannel(netChannel)
+
+                        var chatCommandComposer = BncsMessageComposer()
+                        chatCommandComposer.write("/join \(BotConfig.homeChannel)")
+                        let _ = chatCommandComposer.build(messageIdentifier: .ChatCommand).writeToChannel(netChannel)
+
+                    default:
+                        print("[BNCS] Logon failed: \(status).")
+                        state = .disconnecting
             }
 
-        case .AuthCheck:
-            let authCheckResult = consumer.readUInt32()
-            if authCheckResult == 0 {
-                print("[BNCS] Auth check passed! Logging in..")
+            case .EnterChat:
+                let uniqueUsername = consumer.readNullTerminatedString()
+                let statstring = consumer.readNullTerminatedString()
+                let account = consumer.readNullTerminatedString()
 
-                state = .loggingIn
+                state = .connected(username: uniqueUsername, statstring: statstring, account: account)
 
-                let passwordHash = BotConfig.password.data(using: .ascii)!.doubleXsha1(clientToken: clientToken, serverToken: serverToken)
-                var composer = BncsMessageComposer()
-                composer.write(clientToken)
-                composer.write(serverToken)
-                composer.write(passwordHash)
-                composer.write(BotConfig.username) // username
-                let logonResponseMessage = composer.build(messageIdentifier: BncsMessageIdentifier.LogonResponse2)
-                let _ = logonResponseMessage.writeToChannel(channel)
+            case .ChatEvent:
+                let rawEventId = consumer.readUInt32()
+                let flags = consumer.readUInt32()
+                let ping = consumer.readUInt32()
+                monitorDefunctValues(value: consumer.readUInt32(), expected: 0, description: "SID_CHATEVENT field 3, IP address")
+                monitorDefunctValues(value: consumer.readUInt32(), expected: 0xBAADF00D, description: "SID_CHATEVENT field 4, account number")
+                monitorDefunctValues(value: consumer.readUInt32(), expected: 0xBAADF00D, description: "SID_CHATEVENT field 5, registration authority")
+                let username = consumer.readNullTerminatedString()
+                let text = consumer.readNullTerminatedString()
 
-            } else {
-                print("[BNCS] Auth check failed. \(authCheckResult)")
-                state = .disconnecting
-            }
+                guard let eventId = BncsChatEventIdentifier(rawValue: rawEventId) else {
+                    print("[BNCS] Unrecognized chat event ID \(rawEventId). Username: \(username), text: \(text), flags: \(flags), ping: \(ping).")
+                    return
+                }
 
-        case .RequiredWork:
-            let mpqFilename = consumer.readNullTerminatedString()
-            print("[BNCS] Required work: \(mpqFilename)")
-
-        case .LogonResponse2:
-            let rawStatus = consumer.readUInt32()
-            guard let status = BncsLogonResponse2Status(rawValue: rawStatus) else {
-                print("[BNCS] Illegal logon response: \(rawStatus).")
-                state = .disconnecting
-                return
-            }
-
-            switch status {
-            case .success:
-                print("[BNCS] Login successful! Entering chat.")
-
-                var enterChatComposer = BncsMessageComposer()
-                enterChatComposer.write("")
-                enterChatComposer.write("")
-                let _ = enterChatComposer.build(messageIdentifier: .EnterChat).writeToChannel(channel)
-
-                var joinChannelComposer = BncsMessageComposer()
-                joinChannelComposer.write(1 as UInt32) // first join -- contrary to bnet docs, 1 is used by D2 as well
-                joinChannelComposer.write("Diablo II") // channel name
-                let _ = joinChannelComposer.build(messageIdentifier: .JoinChannel).writeToChannel(channel)
-
-                var chatCommandComposer = BncsMessageComposer()
-                chatCommandComposer.write("/join \(BotConfig.homeChannel)")
-                let _ = chatCommandComposer.build(messageIdentifier: .ChatCommand).writeToChannel(channel)
+                chatChannel.processChatEvent(BncsChatEvent(
+                    identifier: eventId,
+                    username: username,
+                    text: text,
+                    flags: flags,
+                    ping: ping
+                ))
 
             default:
-                print("[BNCS] Logon failed: \(status).")
-                state = .disconnecting
-            }
-
-        case .EnterChat:
-            let uniqueUsername = consumer.readNullTerminatedString()
-            let statstring = consumer.readNullTerminatedString()
-            let accountName = consumer.readNullTerminatedString()
-            print("[BNCS] Entered chat with unique username '\(uniqueUsername)', statstring '\(statstring)', account name '\(accountName)'.")
-
-            state = .connected
-
-        case .ChatEvent:
-            let rawEventId = consumer.readUInt32()
-            let flags = consumer.readUInt32()
-            let ping = consumer.readUInt32()
-            monitorDefunctValues(value: consumer.readUInt32(), expected: 0, description: "SID_CHATEVENT field 3, IP address")
-            monitorDefunctValues(value: consumer.readUInt32(), expected: 0xBAADF00D, description: "SID_CHATEVENT field 4, account number")
-            monitorDefunctValues(value: consumer.readUInt32(), expected: 0xBAADF00D, description: "SID_CHATEVENT field 5, registration authority")
-            let username = consumer.readNullTerminatedString()
-            let text = consumer.readNullTerminatedString()
-
-            guard let eventId = BncsChatEventIdentifier(rawValue: rawEventId) else {
-                print("[BNCS] Unrecognized chat event ID \(rawEventId). Username: \(username), text: \(text), flags: \(flags), ping: \(ping).")
-                return
-            }
-
-            let chatEvent = BncsChatEvent(
-                identifier: eventId,
-                username: username,
-                text: text,
-                flags: flags,
-                ping: ping
-            )
-
-            print("ChatEvent: \(chatEvent)")
-
-        default:
-            print("No parser for this packet!\n\(consumer)")
+                print("No parser for this packet!\n\(consumer)")
         }
-    }
-
-    public func errorCaught(ctx: ChannelHandlerContext, error: Error) {
-        print("[BNCS] Error: ", error)
-
-        // As we are not really interested getting notified on success or failure we just pass nil as promise to
-        // reduce allocations.
-        ctx.close(promise: nil)
     }
 }
 

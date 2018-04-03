@@ -18,7 +18,7 @@ public struct ChatChannel {
         self.name = name
     }
 
-    mutating func processChatEvent(_ chatEvent: BncsChatEvent) {
+    public mutating func processChatEvent(_ chatEvent: BncsChatEvent) {
 
         switch chatEvent.identifier {
 
