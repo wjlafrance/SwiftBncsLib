@@ -22,8 +22,6 @@ class BattleNetHandler: ChannelInboundHandler {
 
     private var state: BattleNetConnectionStatus = .disconnected(error: nil) {
         didSet {
-            print("[BNCS] Status changed from \(oldValue) to \(state).")
-
             switch state {
                 case .connecting:
                     print("[BNCS] Connecting...")
@@ -98,6 +96,12 @@ class BattleNetHandler: ChannelInboundHandler {
 
     /// MARK -
 
+    func sendMessage(_ message: BncsMessage) {
+        var buffer = netChannel.allocator.buffer(capacity: message.data.count)
+        buffer.write(bytes: message.data.arrayOfBytes())
+        netChannel.writeAndFlush(buffer, promise: nil)
+    }
+
     func monitorDefunctValues<T: Comparable>(value: T, expected: T, description: String) {
         if value != expected {
             print("[BNCS] Unexpected value in defunct field. Description: \(description), value: \(value).")
@@ -123,8 +127,7 @@ class BattleNetHandler: ChannelInboundHandler {
         composer.write(0 as UInt32)
         composer.write("USA")
         composer.write("United States")
-        let authInfoMessage = composer.build(messageIdentifier: BncsMessageIdentifier.AuthInfo)
-        let _ = authInfoMessage.writeToChannel(netChannel)
+        sendMessage(composer.build(messageIdentifier: BncsMessageIdentifier.AuthInfo))
     }
 
     func processMessage(_ message: BncsMessage) {
@@ -132,15 +135,13 @@ class BattleNetHandler: ChannelInboundHandler {
 
         switch consumer.message.identifier {
             case .Null:
-                let _ = BncsMessageComposer().build(messageIdentifier: .Null).writeToChannel(netChannel)
-                print("[BNCS] Keep-alive.")
+                sendMessage(BncsMessageComposer().build(messageIdentifier: .Null))
 
             case .Ping:
                 let cookie = consumer.readUInt32()
                 var composer = BncsMessageComposer()
                 composer.write(cookie)
-                let _ = composer.build(messageIdentifier: .Ping).writeToChannel(netChannel)
-                print("[BNCS] Ping.")
+                sendMessage(composer.build(messageIdentifier: .Ping))
 
             case .AuthInfo:
                 print("[BNCS] Received auth challenge.")
@@ -172,8 +173,7 @@ class BattleNetHandler: ChannelInboundHandler {
                     composer.write(checkRevisionResults.info)
                     composer.write("SwiftBot")
                     print("[BNCS] Sending auth check...")
-                    let authCheckMessage = composer.build(messageIdentifier: BncsMessageIdentifier.AuthCheck)
-                    let _ = authCheckMessage.writeToChannel(netChannel)
+                    sendMessage(composer.build(messageIdentifier: BncsMessageIdentifier.AuthCheck))
                 } catch (let error) {
                     print("Error calculating CheckRevision(): \(error)")
                 }
@@ -191,8 +191,7 @@ class BattleNetHandler: ChannelInboundHandler {
                     composer.write(serverToken)
                     composer.write(passwordHash)
                     composer.write(BotConfig.username) // username
-                    let logonResponseMessage = composer.build(messageIdentifier: BncsMessageIdentifier.LogonResponse2)
-                    let _ = logonResponseMessage.writeToChannel(netChannel)
+                    sendMessage(composer.build(messageIdentifier: BncsMessageIdentifier.LogonResponse2))
 
                 } else {
                     print("[BNCS] Auth check failed. \(authCheckResult)")
@@ -218,16 +217,16 @@ class BattleNetHandler: ChannelInboundHandler {
                         var enterChatComposer = BncsMessageComposer()
                         enterChatComposer.write("")
                         enterChatComposer.write("")
-                        let _ = enterChatComposer.build(messageIdentifier: .EnterChat).writeToChannel(netChannel)
+                        sendMessage(enterChatComposer.build(messageIdentifier: .EnterChat))
 
                         var joinChannelComposer = BncsMessageComposer()
                         joinChannelComposer.write(1 as UInt32) // first join -- contrary to bnet docs, 1 is used by D2 as well
                         joinChannelComposer.write("Diablo II") // channel name
-                        let _ = joinChannelComposer.build(messageIdentifier: .JoinChannel).writeToChannel(netChannel)
+                        sendMessage(joinChannelComposer.build(messageIdentifier: .JoinChannel))
 
                         var chatCommandComposer = BncsMessageComposer()
                         chatCommandComposer.write("/join \(BotConfig.homeChannel)")
-                        let _ = chatCommandComposer.build(messageIdentifier: .ChatCommand).writeToChannel(netChannel)
+                        sendMessage(chatCommandComposer.build(messageIdentifier: .ChatCommand))
 
                     default:
                         print("[BNCS] Logon failed: \(status).")
