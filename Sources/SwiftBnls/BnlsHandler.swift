@@ -11,6 +11,12 @@ class BnlsHandler: ChannelInboundHandler {
     private let channelsSyncQueue = DispatchQueue(label: "channelsQueue")
     private var channels: [ObjectIdentifier: Channel] = [:]
 
+    func sendMessage(_ message: BnlsMessage, toChannel netChannel: Channel) {
+        var buffer = netChannel.allocator.buffer(capacity: message.data.count)
+        buffer.write(bytes: message.data.arrayOfBytes())
+        netChannel.writeAndFlush(buffer, promise: nil)
+    }
+
     public func channelRead(ctx: ChannelHandlerContext, data: NIOAny) {
         let id = ObjectIdentifier(ctx.channel)
         let message = self.unwrapInboundIn(data)
@@ -65,7 +71,8 @@ class BnlsHandler: ChannelInboundHandler {
                     composer.write(clientToken)
                     composer.write(x)
                 }
-                let _ = composer.build(messageIdentifier: .CdKeyEx).writeToChannel(ctx.channel)
+
+                sendMessage(composer.build(messageIdentifier: .CdKeyEx), toChannel: ctx.channel)
 
             case .Authorize:
                 let botname = messageReader.readNullTerminatedString()
@@ -73,7 +80,8 @@ class BnlsHandler: ChannelInboundHandler {
 
                 var composer = BnlsMessageComposer()
                 composer.write(0xDEADBEEF as UInt32) // server code
-                let _ = composer.build(messageIdentifier: .Authorize).writeToChannel(ctx.channel)
+
+                sendMessage(composer.build(messageIdentifier: .Authorize), toChannel: ctx.channel)
 
             case .AuthorizeProof:
                 let _ = messageReader.readUInt32() // checksum
@@ -81,7 +89,8 @@ class BnlsHandler: ChannelInboundHandler {
 
                 var composer = BnlsMessageComposer()
                 composer.write(0 as UInt32) // authorized
-                let _ = composer.build(messageIdentifier: .AuthorizeProof).writeToChannel(ctx.channel)
+
+                sendMessage(composer.build(messageIdentifier: .AuthorizeProof), toChannel: ctx.channel)
 
             case .RequestVersionByte:
                 guard let product = BnlsProductIdentifier(rawValue: messageReader.readUInt32()) else {
@@ -89,7 +98,8 @@ class BnlsHandler: ChannelInboundHandler {
 
                     var composer = BnlsMessageComposer()
                     composer.write(0 as UInt32) // invalid product
-                    let _ = composer.build(messageIdentifier: .RequestVersionByte).writeToChannel(ctx.channel)
+
+                    sendMessage(composer.build(messageIdentifier: .RequestVersionByte), toChannel: ctx.channel)
                     return
                 }
 
@@ -98,7 +108,8 @@ class BnlsHandler: ChannelInboundHandler {
                 var composer = BnlsMessageComposer()
                 composer.write(product.rawValue)
                 composer.write(product.versionByte)
-                let _ = composer.build(messageIdentifier: .RequestVersionByte).writeToChannel(ctx.channel)
+
+                sendMessage(composer.build(messageIdentifier: .RequestVersionByte), toChannel: ctx.channel)
 
             case .VersionCheckEx2:
                 let productId = messageReader.readUInt32()
@@ -112,7 +123,7 @@ class BnlsHandler: ChannelInboundHandler {
                     var composer = BnlsMessageComposer()
                     composer.write(0 as UInt32) // failure
                     composer.write(cookie)
-                    let _ = composer.build(messageIdentifier: .VersionCheckEx2).writeToChannel(ctx.channel)
+                    sendMessage(composer.build(messageIdentifier: .VersionCheckEx2), toChannel: ctx.channel)
                 }
 
                 guard let product = BnlsProductIdentifier(rawValue: productId) else {
@@ -133,7 +144,7 @@ class BnlsHandler: ChannelInboundHandler {
                     composer.write(checkRevisionResults.info)
                     composer.write(cookie)
                     composer.write(product.versionByte)
-                    let _ = composer.build(messageIdentifier: .VersionCheckEx2).writeToChannel(ctx.channel)
+                    sendMessage(composer.build(messageIdentifier: .VersionCheckEx2), toChannel: ctx.channel)
                 } catch (let error) {
                     print("[BNLS] [\(id)] CheckRevision error! \(error)")
                     sendFailure()
@@ -142,7 +153,6 @@ class BnlsHandler: ChannelInboundHandler {
             default:
                 print("[BNLS] [\(id)] Unrecognized packet. Ignoring. \(message.debugDescription)")
         }
-
     }
 
     public func errorCaught(ctx: ChannelHandlerContext, error: Error) {
