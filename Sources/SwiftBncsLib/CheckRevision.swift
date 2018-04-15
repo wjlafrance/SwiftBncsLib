@@ -148,8 +148,15 @@ public enum CheckRevision {
 
         }
 
+        var exeVersion: UInt32 = 0
+        do {
+            exeVersion = try PortableExecutableUtil.getVersion(file: files[0])
+        } catch (let error) {
+            print("Caught error trying to get portable executable version: \(files[0]), \(error)")
+        }
+
         return (
-            version: try PortableExecutableUtil.getVersion(file: files[0]),
+            version: exeVersion,
             hash: UInt32(truncatingIfNeeded: values[2]),
             info: try fileInfoString(file: files[0])
         )

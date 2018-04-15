@@ -21,6 +21,11 @@ enum PortableExecutableUtil {
 
         let bytes = try Data(contentsOf: URL(fileURLWithPath: file)).arrayOfBytes()
 
+        // If the file is actually empty, just report 0. This is for playing with BNUpdate with fake initial hashfiles.
+        if bytes.count == 0 {
+            return 0
+        }
+
         let peStart = Int(bytes[PEStartOffset]) | Int(bytes[PEStartOffset + 1]) << 8
 
         let peSignature = IntUtil.from8to32([
