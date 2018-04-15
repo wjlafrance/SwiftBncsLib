@@ -14,6 +14,11 @@ extension Foundation.Data {
         return subdata(in: range)
     }
 
+    func subdataFromIndex(_ index: Data.Index, length: Data.Index) -> Data {
+        let range = Range<Data.Index>(uncheckedBounds: (lower: index, upper: index + length))
+        return subdata(in: range)
+    }
+
     public var hexDescription: String {
         let contents = arrayOfBytes()
         let lineLength = 16
