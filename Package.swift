@@ -7,17 +7,15 @@ let package = Package(
     name: "SwiftBncsLib",
     products: [
         // Products define the executables and libraries produced by a package, and make them visible to other packages.
-        .executable(
-            name: "SwiftBncsClient",
+        .executable(name: "SwiftBncsClient",
             targets: ["SwiftBncsClient"]),
-        .executable(
-            name: "SwiftBnls",
+        .executable(name: "SwiftBnls",
             targets: ["SwiftBnls"]),
-        .library(
-            name: "SwiftBncsNIO",
+        .executable(name: "SwiftBnftp",
+            targets: ["SwiftBnftp"]),
+        .library(name: "SwiftBncsNIO",
             targets: ["SwiftBncsNIO"]),
-        .library(
-            name: "SwiftBncsLib",
+        .library(name: "SwiftBncsLib",
             targets: ["SwiftBncsLib"]),
     ],
     dependencies: [
@@ -29,16 +27,15 @@ let package = Package(
     targets: [
         // Targets are the basic building blocks of a package. A target can define a module or a test suite.
         // Targets can depend on other targets in this package, and on products in packages which this package depends on.
-        .target(
-            name: "SwiftBncsLib",
+        .target(name: "SwiftBncsLib",
             dependencies: ["CryptoSwift"]),
         .target(name: "SwiftBncsNIO",
             dependencies: ["SwiftBncsLib", "NIO"]),
-        .target(
-            name: "SwiftBncsClient",
+        .target(name: "SwiftBncsClient",
             dependencies: ["SwiftBncsLib", "SwiftBncsNIO", "NIO"]),
-        .target(
-            name: "SwiftBnls",
+        .target(name: "SwiftBnls",
+            dependencies: ["SwiftBncsLib", "SwiftBncsNIO", "NIO"]),
+        .target(name: "SwiftBnftp",
             dependencies: ["SwiftBncsLib", "SwiftBncsNIO", "NIO"]),
         .testTarget(
             name: "SwiftBncsLibTests",
