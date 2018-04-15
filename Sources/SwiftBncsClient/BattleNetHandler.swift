@@ -126,8 +126,8 @@ class BattleNetHandler: ChannelInboundHandler {
             var composer = BncsMessageComposer()
             composer.write(0 as UInt32)
             composer.write(BncsPlatformIdentifier.IntelX86.rawValue)
-            composer.write(BncsProductIdentifier.Diablo2.rawValue)
-            composer.write(0x0E as UInt32)
+            composer.write(self.config.product.rawValue)
+            composer.write(self.config.product.versionByte)
             composer.write(BncsLanguageIdentifier.EnglishUnitedStates.rawValue)
             composer.write(0 as UInt32)
             composer.write(0 as UInt32)
@@ -154,31 +154,43 @@ class BattleNetHandler: ChannelInboundHandler {
                 sendMessage(composer.build(messageIdentifier: .Ping))
 
             case .AuthInfo:
-                print("[BNCS] Received auth challenge.")
                 let loginType   = consumer.readUInt32()
                 serverToken     = consumer.readUInt32()
                 let _           = consumer.readUInt32() // UDP token
-                let mpqFiletime = consumer.readUInt64()
+                let mpqFiletime = Date(timeIntervalSince1970: TimeInterval(consumer.readUInt64() / 1_00_000_000))
                 let mpqFilename = consumer.readNullTerminatedString()
                 let challenge   = consumer.readNullTerminatedString()
-                print("[BNCS] Auth challenge received. Login type \(loginType), MPQ \(mpqFilename) (\(mpqFiletime)), challenge: \(challenge).")
 
+                if mpqFilename.hasPrefix("lockdown-") || mpqFilename.hasPrefix("psistorm-") {
+                    print("[BNCS] Server has issued unsupported lockdown / psistorm challenge!")
+                    state = .disconnecting
+                    return
+                }
+
+                print("[BNCS] Auth challenge received. Login type \(loginType), MPQ \(mpqFilename) (\(mpqFiletime)), challenge: \(challenge).")
                 let mpqFileNumber = Int(mpqFilename.cString(using: .ascii)![9] - 0x30)
 
                 do {
-                    let checkRevisionResults = try CheckRevision.hash(mpqFileNumber: mpqFileNumber, challenge: challenge, files: [
-                        "/Users/lafrance/dev/SwiftBncsLib/extern/hashfiles/D2DV/Game.exe"
-                    ])
+                    let checkRevisionResults = try CheckRevision.hash(mpqFileNumber: mpqFileNumber, challenge: challenge, files: config.product.hashFiles)
 
                     var composer = BncsMessageComposer()
                     composer.write(clientToken) // client token
                     composer.write(checkRevisionResults.version)
                     composer.write(checkRevisionResults.hash)
-                    composer.write(1 as UInt32) // keys
-                    composer.write(0 as UInt32) // spawn
 
-                    let hash = try! CdkeyDecodeAlpha26(cdkey: config.cdkey).hashForAuthCheck(clientToken: clientToken, serverToken: serverToken)
-                    composer.write(hash)
+                    if let cdkey1 = config.cdkey, let cdkey2 = config.cdkey2 {
+                        composer.write(2 as UInt32) // keys
+                        composer.write(0 as UInt32) // spawn
+                        composer.write(try! CdkeyDecodeAlpha26(cdkey: cdkey1).hashForAuthCheck(clientToken: clientToken, serverToken: serverToken))
+                        composer.write(try! CdkeyDecodeAlpha26(cdkey: cdkey2).hashForAuthCheck(clientToken: clientToken, serverToken: serverToken))
+                    } else if let cdkey1 = config.cdkey {
+                        composer.write(1 as UInt32) // keys
+                        composer.write(0 as UInt32) // spawn
+                        composer.write(try! CdkeyDecodeAlpha26(cdkey: cdkey1).hashForAuthCheck(clientToken: clientToken, serverToken: serverToken))
+                    } else {
+                        composer.write(0 as UInt32) // keys
+                        composer.write(0 as UInt32) // spawn
+                    }
 
                     composer.write(checkRevisionResults.info)
                     composer.write("SwiftBot")
