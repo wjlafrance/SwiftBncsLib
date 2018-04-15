@@ -74,18 +74,60 @@ public enum BncsProductIdentifier: UInt32 {
     var isValidBncsClient: Bool {
         let invalidBncsClients: [BncsProductIdentifier] = [
             .Telnet,
-            .Starcraft,
-            .StarcraftExpansion,
-            .StarcraftShareware,
-            .StarcraftJapan,
-            .DiabloShareware,
+            .Starcraft,          // Replaced by Starcraft: Remastered
+            .StarcraftExpansion, // Replaced by Starcraft: Remastered
+            .StarcraftShareware, // Replaced by Starcraft: Remastered
+//            .StarcraftJapan,
             .DiabloBeta,
             .DiabloStressTest,
             .Diablo2StressTest,
-            .Warcraft3Demo
+//            .Warcraft3Demo
         ]
 
         return !invalidBncsClients.contains(self)
+    }
+
+    public var versionByte: UInt32 {
+        assert(isValidBncsClient)
+
+        switch self {
+            case .StarcraftJapan:     return 0xA9 // 1.12.0.0
+            case .DiabloShareware:    return 0x2A // 2001.5.11.1
+            case .Diablo:             return 0x2A // 2001.5.11.1
+            case .Diablo2:            return 0x0E // 1.14.3.71
+            case .Diablo2Expansion:   return 0x0D // 1.14.3.71
+            case .Warcraft3:          return 0x1D // 1.29.0.9055
+            case .Warcraft3Expansion: return 0x1D // 1.29.0.9055
+//            case .Warcraft3Demo:      return 0x01
+            default: return 0
+        }
+    }
+
+    public var hashFiles: [String] {
+        switch self {
+            // https://github.com/Davnit/JBLS/blob/master/util/Constants.java
+            case .DiabloShareware: return [ /* DSHR_IX86_108_109.mpq */
+                "/Users/lafrance/dev/SwiftBncsLib/extern/hashfiles/DSHR/Diablo_s.exe",
+                "/Users/lafrance/dev/SwiftBncsLib/extern/hashfiles/DSHR/Storm.dll",
+                "/Users/lafrance/dev/SwiftBncsLib/extern/hashfiles/DSHR/BATTLE.snp",
+            ]
+            case .Diablo: return [ /* DRTL_IX86_108_109.mpq */
+                "/Users/lafrance/dev/SwiftBncsLib/extern/hashfiles/DRTL/Diablo.exe",
+                "/Users/lafrance/dev/SwiftBncsLib/extern/hashfiles/DRTL/Storm.dll",
+                "/Users/lafrance/dev/SwiftBncsLib/extern/hashfiles/DRTL/BATTLE.snp",
+                ]
+            case .Diablo2: return [ /* D2DV_IX86_1xx_114d.mpq */
+                "/Users/lafrance/dev/SwiftBncsLib/extern/hashfiles/D2DV/Game.exe"
+                ]
+            case .Diablo2Expansion: return [ /* D2XP_IX86_1xx_114d.mpq */
+                "/Users/lafrance/dev/SwiftBncsLib/extern/hashfiles/D2XP/Game.exe"
+            ]
+            case .Warcraft3: return [ /* WAR3_IX86_1.29.0.9055.mpq */
+            ]
+            case .Warcraft3Expansion: return [ /* W3XP_IX86_1.29.0.9055.mpq */
+            ]
+            default: precondition(false)
+        }
     }
 
     public init?(stringRepresentation: String) {

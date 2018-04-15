@@ -29,7 +29,7 @@ class BattleNetHandler: ChannelInboundHandler {
                     print("[BNCS] Connecting...")
 
                 case .socketOpened:
-                    print("[BNCS] Connected to \(netChannel.remoteAddress!).")
+                    print("[BNCS] Connected to \(netChannel.remoteAddress).")
                     sendProtocolByteAndAuthInfo()
 
                 case .authorizing:
@@ -198,6 +198,7 @@ class BattleNetHandler: ChannelInboundHandler {
                     sendMessage(composer.build(messageIdentifier: BncsMessageIdentifier.AuthCheck))
                 } catch (let error) {
                     print("Error calculating CheckRevision(): \(error)")
+                    state = .disconnecting
                 }
 
             case .AuthCheck:
