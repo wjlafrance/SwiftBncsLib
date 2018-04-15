@@ -1,8 +1,8 @@
-
 import Foundation
 import SwiftBncsLib
 
 let DefaultOptions = [
+    "version": "1",
     "bncs-addr": "asia.battle.net",
     "bncs-port": "6112",
     "prod-id": "VD2D",
@@ -51,13 +51,15 @@ let SessionOptions = loadOptionsFromCommandLine()
 print("Compiled default options: \(DefaultOptions)")
 print("Options for this session: \(SessionOptions)")
 
-guard let bncsAddr        = SessionOptions["bncs-addr"],
+guard let versionString = SessionOptions["version"],
+    let bncsAddr        = SessionOptions["bncs-addr"],
     let bncsPortString  = SessionOptions["bncs-port"],
     let filename        = SessionOptions["filename"],
     let outputDirectory = SessionOptions["output-dir"],
     let prodIdString    = SessionOptions["prod-id"],
     let platIdString    = SessionOptions["plat-id"],
     let bncsPort = Int(bncsPortString),
+    let version  = Int(versionString),
     let prodId = SwiftBncsLib.BncsProductIdentifier(stringRepresentation: prodIdString),
     let platId = SwiftBncsLib.BncsPlatformIdentifier(stringRepresentation: platIdString)
     else {
@@ -70,21 +72,57 @@ let (inputStream, outputStream) = createStreamPair(host: bncsAddr, port: bncsPor
 
 outputStream.write(byte: BncsProtocolIdentifier.FileTransferProtocol.rawValue)
 
-let request = BnftpRequestComposer(platformIdentifier: platId, productIdentifier: prodId, filename: filename).build()
+if version == 1 {
+    let request = BnftpRequestComposer(platformIdentifier: platId, productIdentifier: prodId, filename: filename).build()
 
-print("[BNFTP] Request sent")
-outputStream.write(data: request)
+    outputStream.write(data: request)
+    print("[BNFTP] Request sent")
 
-guard let consumer = try? BnftpResponseConsumer(inputStream: inputStream) else {
-    print("[BNFTP] Bad response :(")
-    exit(0)
-}
+    guard let consumer = try? BnftpResponseConsumer(inputStream: inputStream) else {
+        print("[BNFTP] Bad response :(")
+        exit(0)
+    }
 
-let outputPath = (outputDirectory as NSString).appendingPathComponent(consumer.filename)
-print("[BNFTP] Received response: \(consumer.filesize) bytes")
-do {
-    try consumer.write(path: outputPath)
-    print("[BNFTP] Wrote file to \(outputPath)")
-} catch(let error) {
-    print("[BNFTP] Error writing file: \(error)")
+    let outputPath = (outputDirectory as NSString).appendingPathComponent(consumer.filename)
+    print("[BNFTP] Received response: \(consumer.filesize) bytes")
+    do {
+        try consumer.write(path: outputPath)
+        print("[BNFTP] Wrote file to \(outputPath)")
+    } catch(let error) {
+        print("[BNFTP] Error writing file: \(error)")
+    }
+
+} else if version == 2 {
+    guard let cdkey = SessionOptions["cdkey"] else {
+        preconditionFailure("--version 2 requires --cdkey to be provided")
+    }
+
+    let request = Bnftp2InitialRequestComposer(platformIdentifier: platId, productIdentifier: prodId).build()
+
+    outputStream.write(data: request)
+    print("[BNFTP] Request sent, awaiting server token")
+
+    guard let serverToken = try? Bnftp2ServerTokenResponseConsumer(inputStream: inputStream).serverToken else {
+        print("[BNFTP] Error getting server token")
+        exit(0)
+    }
+
+    let secondRequest = Bnftp2SecondRequestComposer(serverToken: serverToken, filename: filename, cdkey: cdkey).build()
+    print(secondRequest.hexDescription)
+    outputStream.write(data: secondRequest)
+
+    guard let consumer = try? Bnftp2ResponseConsumer(inputStream: inputStream) else {
+        print("[BNFTP] Bad response :(")
+        exit(0)
+    }
+
+    let outputPath = (outputDirectory as NSString).appendingPathComponent(consumer.filename)
+    print("[BNFTP] Received response: \(consumer.filesize) bytes")
+    do {
+        try consumer.write(path: outputPath)
+        print("[BNFTP] Wrote file to \(outputPath)")
+    } catch(let error) {
+        print("[BNFTP] Error writing file: \(error)")
+    }
+
 }
