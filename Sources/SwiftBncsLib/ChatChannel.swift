@@ -2,23 +2,24 @@ import Foundation
 
 public struct ChatParticipant {
 
-    let username: String
-    let flags: UInt32
+    public let username: String
+
+    // TODO: Make BattleNetFlags enum
+    public let flags: UInt32
 
 }
 
+public class ChatChannel {
 
-public struct ChatChannel {
+    public var name: String
 
-    var name: String
-
-    var participants = [ChatParticipant]()
+    public var participants = [ChatParticipant]()
 
     public init(name: String) {
         self.name = name
     }
 
-    public mutating func processChatEvent(_ chatEvent: BncsChatEvent) {
+    public func processChatEvent(_ chatEvent: BncsChatEvent) {
 
         switch chatEvent.identifier {
 

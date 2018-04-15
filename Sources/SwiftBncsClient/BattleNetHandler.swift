@@ -20,7 +20,7 @@ class BattleNetHandler: ChannelInboundHandler {
     var config: BotInstanceConfiguration
 
     var netChannel: Channel!
-    var chatChannel = ChatChannel(name: "The Void")
+    let chatChannel = ChatChannel(name: "The Void")
 
     private var state: BattleNetConnectionStatus = .disconnected(error: nil) {
         didSet {
