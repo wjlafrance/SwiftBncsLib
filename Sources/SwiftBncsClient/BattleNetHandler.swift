@@ -17,6 +17,8 @@ class BattleNetHandler: ChannelInboundHandler {
         case disconnected(error: Error?)
     }
 
+    var config: BotInstanceConfiguration
+
     var netChannel: Channel!
     var chatChannel = ChatChannel(name: "The Void")
 
@@ -54,6 +56,10 @@ class BattleNetHandler: ChannelInboundHandler {
 
     let clientToken = arc4random_uniform(UInt32.max)
     var serverToken: UInt32 = 0
+
+    init(configuration: BotInstanceConfiguration) {
+        self.config = configuration
+    }
 
     // MARK - ChannelInboundHandler compliance
 
@@ -97,6 +103,8 @@ class BattleNetHandler: ChannelInboundHandler {
     /// MARK -
 
     func sendMessage(_ message: BncsMessage) {
+        PacketLogger.log(config: config, direction: .send, data: message.data)
+
         var buffer = netChannel.allocator.buffer(capacity: message.data.count)
         buffer.write(bytes: message.data.arrayOfBytes())
         netChannel.writeAndFlush(buffer, promise: nil)
@@ -113,24 +121,26 @@ class BattleNetHandler: ChannelInboundHandler {
 
         var protocolByteBuffer = netChannel.allocator.buffer(capacity: 1)
         protocolByteBuffer.write(bytes: [1])
-        let _ = netChannel.writeAndFlush(protocolByteBuffer)
+        netChannel.writeAndFlush(protocolByteBuffer).whenComplete {
 
-        var composer = BncsMessageComposer()
-        composer.write(0 as UInt32)
-        composer.write(BncsPlatformIdentifier.IntelX86.rawValue)
-        composer.write(BncsProductIdentifier.Diablo2.rawValue)
-        composer.write(0x0E as UInt32)
-        composer.write(BncsLanguageIdentifier.EnglishUnitedStates.rawValue)
-        composer.write(0 as UInt32)
-        composer.write(0 as UInt32)
-        composer.write(0 as UInt32)
-        composer.write(0 as UInt32)
-        composer.write("USA")
-        composer.write("United States")
-        sendMessage(composer.build(messageIdentifier: BncsMessageIdentifier.AuthInfo))
+            var composer = BncsMessageComposer()
+            composer.write(0 as UInt32)
+            composer.write(BncsPlatformIdentifier.IntelX86.rawValue)
+            composer.write(BncsProductIdentifier.Diablo2.rawValue)
+            composer.write(0x0E as UInt32)
+            composer.write(BncsLanguageIdentifier.EnglishUnitedStates.rawValue)
+            composer.write(0 as UInt32)
+            composer.write(0 as UInt32)
+            composer.write(0 as UInt32)
+            composer.write(0 as UInt32)
+            composer.write("USA")
+            composer.write("United States")
+            self.sendMessage(composer.build(messageIdentifier: BncsMessageIdentifier.AuthInfo))
+        }
     }
 
     func processMessage(_ message: BncsMessage) {
+        PacketLogger.log(config: config, direction: .recv, data: message.data)
         var consumer = BncsMessageConsumer(message: message)
 
         switch consumer.message.identifier {
@@ -167,7 +177,7 @@ class BattleNetHandler: ChannelInboundHandler {
                     composer.write(1 as UInt32) // keys
                     composer.write(0 as UInt32) // spawn
 
-                    let hash = try! CdkeyDecodeAlpha26(cdkey: BotConfig.cdkey).hashForAuthCheck(clientToken: clientToken, serverToken: serverToken)
+                    let hash = try! CdkeyDecodeAlpha26(cdkey: config.cdkey).hashForAuthCheck(clientToken: clientToken, serverToken: serverToken)
                     composer.write(hash)
 
                     composer.write(checkRevisionResults.info)
@@ -185,12 +195,12 @@ class BattleNetHandler: ChannelInboundHandler {
 
                     state = .loggingIn
 
-                    let passwordHash = BotConfig.password.data(using: .ascii)!.doubleXsha1(clientToken: clientToken, serverToken: serverToken)
+                    let passwordHash = config.password.data(using: .ascii)!.doubleXsha1(clientToken: clientToken, serverToken: serverToken)
                     var composer = BncsMessageComposer()
                     composer.write(clientToken)
                     composer.write(serverToken)
                     composer.write(passwordHash)
-                    composer.write(BotConfig.username) // username
+                    composer.write(config.username) // username
                     sendMessage(composer.build(messageIdentifier: BncsMessageIdentifier.LogonResponse2))
 
                 } else {
@@ -225,7 +235,7 @@ class BattleNetHandler: ChannelInboundHandler {
                         sendMessage(joinChannelComposer.build(messageIdentifier: .JoinChannel))
 
                         var chatCommandComposer = BncsMessageComposer()
-                        chatCommandComposer.write("/join \(BotConfig.homeChannel)")
+                        chatCommandComposer.write("/join \(config.homeChannel)")
                         sendMessage(chatCommandComposer.build(messageIdentifier: .ChatCommand))
 
                     default:
