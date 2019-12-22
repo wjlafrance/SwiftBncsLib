@@ -17,12 +17,12 @@ public struct BncsMessage: Message, CustomDebugStringConvertible {
         }
 
         // Check sanity bit
-        guard 0xFF as UInt8 == data.withUnsafeBytes({ return $0[0] }) else {
+        guard 0xFF as UInt8 == data.getByte(at: 0) else {
             throw BncsMessageError.IllegalSanityByte
         }
 
         // Check length matches
-        guard data.count == data.withUnsafeBytes({ IntUtil.from8to16([$0[2], $0[3]]) }) else {
+      guard data.count == IntUtil.from8to16([data.getByte(at: 2), data.getByte(at: 3)]) else {
             throw BncsMessageError.IncorrectMessageLength
         }
 
@@ -33,7 +33,7 @@ public struct BncsMessage: Message, CustomDebugStringConvertible {
         // Check entire header is present -- precondition is fine here, guard is used in init
         precondition(data.count > 2)
 
-        let rawIdentifier: UInt8 = data.withUnsafeBytes { return $0[1] }
+        let rawIdentifier = data.getByte(at: 1)
         return BncsMessageIdentifier(rawValue: rawIdentifier) ?? .None
     }
 

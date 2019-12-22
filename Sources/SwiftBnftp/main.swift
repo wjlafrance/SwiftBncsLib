@@ -40,7 +40,7 @@ func loadOptionsFromCommandLine() -> [String: String] {
 
 func createStreamPair(host: String, port: Int) -> (InputStream, OutputStream) {
     var inputStream: InputStream? = nil, outputStream: OutputStream? = nil
-    Foundation.Stream.getStreamsToHost(withName: host, port: port, inputStream: &inputStream, outputStream: &outputStream)
+    Stream.getStreamsToHost(withName: host, port: port, inputStream: &inputStream, outputStream: &outputStream)
     outputStream!.open()
     inputStream!.open()
     return (inputStream!, outputStream!)

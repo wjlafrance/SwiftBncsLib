@@ -27,7 +27,7 @@ extension MessageConsumer {
     }
 
     public mutating func readUInt8() -> UInt8 {
-        let x: UInt8 = message.data.withUnsafeBytes({ return $0[readIndex] })
+        let x: UInt8 = message.data.getByte(at: readIndex)
         readIndex += 1
         return x
     }

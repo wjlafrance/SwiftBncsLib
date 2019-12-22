@@ -2,6 +2,14 @@ import Foundation
 
 extension Foundation.Data {
 
+    func getByte(at index: Int) -> UInt8 {
+        let data: UInt8 = self.subdata(in: index ..< (index + 1)).withUnsafeBytes { rawPointer in
+            rawPointer.bindMemory(to: UInt8.self).baseAddress!.pointee
+        }
+
+        return data
+    }
+
     public func arrayOfBytes() -> [UInt8] {
         let count = self.count / MemoryLayout<UInt8>.size
         var bytesArray = [UInt8](repeating: 0, count: count)

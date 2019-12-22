@@ -81,7 +81,7 @@ public struct Bnftp2SecondRequestComposer {
     private let localFiletime = 0 as UInt64
 
     let serverToken: UInt32
-    let clientToken = arc4random()
+    let clientToken = UInt32.random(in: .min ... .max)
     let filename: String
     let cdkey: String
 
